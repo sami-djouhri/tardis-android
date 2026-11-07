@@ -34,8 +34,11 @@ private val LightColorScheme = lightColorScheme(
     onSurface = TextPrimaryLight,
     surfaceVariant = SurfaceSunkenLight,
     onSurfaceVariant = TextSecondaryLight,
-    outline = BorderLight,
-    outlineVariant = BorderStrongLight,
+    // Material: `outline` ist der kraeftige Rand (Schalter aus, OutlinedButton),
+    // `outlineVariant` der zarte (Trenner). Bis 2.0.11 vertauscht: ein
+    // ausgeschalteter Schalter war auf der Flaeche kaum zu sehen.
+    outline = BorderStrongLight,
+    outlineVariant = BorderLight,
 )
 
 private val DarkColorScheme = darkColorScheme(
@@ -61,8 +64,11 @@ private val DarkColorScheme = darkColorScheme(
     onSurface = TextPrimaryDark,
     surfaceVariant = SurfaceSunkenDark,
     onSurfaceVariant = TextSecondaryDark,
-    outline = BorderDark,
-    outlineVariant = BorderStrongDark,
+    // Material: `outline` ist der kraeftige Rand (Schalter aus, OutlinedButton),
+    // `outlineVariant` der zarte (Trenner). Bis 2.0.11 vertauscht: ein
+    // ausgeschalteter Schalter war auf der Flaeche kaum zu sehen.
+    outline = BorderStrongDark,
+    outlineVariant = BorderDark,
 )
 
 /**

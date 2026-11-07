@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.roborazzi)
 }
 
 // Gateway-Basis-URL kommt NICHT hartkodiert in den Quelltext, sondern aus einer
@@ -43,7 +44,7 @@ val gatewayUrl: String = (project.findProperty("tardis.gatewayUrl") as String?)?
 // und ein Normalweg ohne Handgriff ist einer, den man nicht vergessen kann.
 val tardisVersionCode: Int = (project.findProperty("tardis.versionCode") as String?)?.toIntOrNull()
     ?: System.getenv("TARDIS_VERSION_CODE")?.toIntOrNull()
-    ?: 9
+    ?: 16
 
 android {
     namespace = "de.djouhri.tardis"
@@ -90,6 +91,12 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
+    }
+
+    testOptions {
+        // Robolectric braucht die Ressourcen (Schriften, Themen) fuer die
+        // Bildschirmfoto-Tests in `bildschirm/`.
+        unitTests.isIncludeAndroidResources = true
     }
 
     lint {
@@ -175,7 +182,18 @@ dependencies {
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.fragment)
 
+    // Startbildschirm-Widget (Alarme + Dienste)
+    implementation(libs.glance.appwidget)
+
     // Tests (JVM-Unit + Integration)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.ui.test.junit4)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.ext.junit)
+    debugImplementation(libs.androidx.ui.test.manifest)
 }

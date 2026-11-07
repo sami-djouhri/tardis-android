@@ -4,6 +4,7 @@ import de.djouhri.tardis.data.model.tardis.InboxActionRequest
 import de.djouhri.tardis.data.model.tardis.InboxList
 import de.djouhri.tardis.data.model.tardis.InboxNoteRequest
 import de.djouhri.tardis.data.model.tardis.InboxNoteResponse
+import de.djouhri.tardis.data.model.tardis.StreamItem
 import okhttp3.ResponseBody
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -27,4 +28,13 @@ interface InboxApi {
         @Path("external_id") externalId: String,
         @Body request: InboxActionRequest,
     ): ResponseBody
+
+    /** Zeitleiste der Ereignisse, juengste zuerst (`mobile-api` `routers/stream.py`). */
+    @GET("v1/stream")
+    suspend fun stream(
+        @Query("limit") limit: Int = 120,
+        /** CSV; null = alle. Gefiltert wird am Dienst, damit das Fenster 120 Treffer dieses Typs zeigt. */
+        @Query("kinds") kinds: String? = null,
+        @Query("sources") sources: String? = null,
+    ): List<StreamItem>
 }

@@ -39,13 +39,17 @@ import de.djouhri.tardis.data.model.tardis.InboxCounts
 import de.djouhri.tardis.data.model.tardis.ServiceSummary
 import de.djouhri.tardis.data.repository.DashboardRepository
 import de.djouhri.tardis.data.repository.OpsRepository
+import de.djouhri.tardis.data.model.tardis.gruppiert
+import de.djouhri.tardis.ui.alarme.AlarmeUiState
 import de.djouhri.tardis.ui.components.ErrorMessage
 import de.djouhri.tardis.ui.components.StatusDot
 import de.djouhri.tardis.ui.components.serviceStatusColor
 import de.djouhri.tardis.ui.components.usageColor
+import de.djouhri.tardis.ui.theme.TextLeise
 import de.djouhri.tardis.ui.theme.StatusDown
 import de.djouhri.tardis.ui.theme.StatusIdle
 import de.djouhri.tardis.ui.theme.StatusUp
+import de.djouhri.tardis.ui.theme.StatusWarn
 import de.djouhri.tardis.util.formatBytes
 import de.djouhri.tardis.util.formatPercent
 import de.djouhri.tardis.util.userMessage
@@ -59,6 +63,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import de.djouhri.tardis.widget.WidgetSpeicher
 import javax.inject.Inject
 
 data class OverviewUiState(
@@ -98,6 +103,7 @@ data class OverviewUiState(
 class OverviewViewModel @Inject constructor(
     private val opsRepository: OpsRepository,
     private val dashboardRepository: DashboardRepository,
+    private val widget: WidgetSpeicher,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OverviewUiState())
@@ -139,6 +145,7 @@ class OverviewViewModel @Inject constructor(
                         )
                     }
                     ladeProbleme(hosts)
+                    if (widget.hostsGesehen(hosts)) widget.neuZeichnen()
                 },
                 onFailure = { error ->
                     _state.update {
@@ -182,6 +189,14 @@ class OverviewViewModel @Inject constructor(
 fun OverviewScreen(
     onOpenServices: () -> Unit,
     onOpenDetail: (host: String, name: String) -> Unit,
+    alarme: AlarmeUiState = AlarmeUiState(),
+    onOpenAlarme: () -> Unit = {},
+    /** Beim Ziehen auch die Alarme neu holen, sonst bleibt deren Karte stehen. */
+    onAlarmeNeu: () -> Unit = {},
+    /** Unterseite Verfuegbarkeit (wie die Web-Flaeche Reliability, seit 2.0.14). */
+    onOpenVerfuegbarkeit: () -> Unit = {},
+    /** Unterseite Topologie (zoombare Karte, seit 2.0.16). */
+    onOpenTopologie: () -> Unit = {},
     viewModel: OverviewViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -201,7 +216,10 @@ fun OverviewScreen(
 
     PullToRefreshBox(
         isRefreshing = state.refreshing,
-        onRefresh = { viewModel.load(refresh = true) },
+        onRefresh = {
+            viewModel.load(refresh = true)
+            onAlarmeNeu()
+        },
         modifier = Modifier.fillMaxSize(),
     ) {
         when {
@@ -223,10 +241,16 @@ fun OverviewScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    // Kritisches gehoert vor alles andere, der Rest unter den
+                    // Containerstand: der bleibt die erste Antwort auf „brennt was?".
+                    if (alarme.kritisch > 0) AlarmKurzKarte(alarme, onOpenAlarme)
                     ContainerRollupCard(state, onOpenServices)
+                    if (alarme.kritisch == 0) AlarmKurzKarte(alarme, onOpenAlarme)
                     if (state.probleme.isNotEmpty()) ProblemCard(state.probleme, onOpenServices, onOpenDetail)
                     state.health?.let { HostMetricsCard(it) }
                     InboxSummaryCard(state.inbox)
+                    SprungKarte("Verfügbarkeit", "Uptime je Dienst, Vorfälle, Cluster-Verlauf", onOpenVerfuegbarkeit)
+                    SprungKarte("Topologie", "Karte aller Wirte, Dienste und Verbindungen", onOpenTopologie)
                 }
             }
         }
@@ -265,7 +289,7 @@ private fun ContainerRollupCard(state: OverviewUiState, onOpenServices: () -> Un
                 Text(
                     "Stand ${uhrzeit(zeitpunkt)} Uhr",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
+                    color = TextLeise,
                 )
             }
 
@@ -377,6 +401,91 @@ private fun ProblemCard(
                     modifier = Modifier
                         .clickable { onOpenServices() }
                         .padding(top = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+/** Eine Zeile, die auf eine Unterseite fuehrt. */
+@Composable
+private fun SprungKarte(titel: String, untertitel: String, onOpen: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth().clickable { onOpen() }) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(titel, style = MaterialTheme.typography.titleMedium)
+                Text(untertitel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AlarmKurzKarte(alarme: AlarmeUiState, onOpenAlarme: () -> Unit) {
+    val antwort = alarme.antwort ?: return
+    Card(modifier = Modifier.fillMaxWidth().clickable { onOpenAlarme() }) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Alarme", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            if (!antwort.erreichbar) {
+                Text("nicht gemessen", style = MaterialTheme.typography.headlineSmall, color = StatusWarn)
+                Text(
+                    "Alarmquelle nicht erreichbar",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                return@Column
+            }
+            val gruppen = antwort.alarme.gruppiert()
+            Text(
+                when {
+                    antwort.alarme.isEmpty() -> "keine aktiven"
+                    antwort.kritisch > 0 -> "${antwort.kritisch} kritisch, ${antwort.alarme.size} gesamt"
+                    else -> "${antwort.alarme.size} aktiv"
+                },
+                style = MaterialTheme.typography.headlineSmall,
+                color = when {
+                    antwort.alarme.isEmpty() -> StatusUp
+                    antwort.kritisch > 0 -> StatusDown
+                    else -> StatusWarn
+                },
+            )
+            // Die drei obersten Befunde mit Namen: eine blosse Zahl sagt nicht,
+            // ob es der bekannte Dauerbrenner ist oder etwas Neues.
+            gruppen.take(3).forEach { g ->
+                Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    StatusDot(color = if (g.istKritisch) StatusDown else StatusWarn)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        g.alarme.first().zusammenfassung,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (g.alarme.size > 1) {
+                        Text(" ×${g.alarme.size}", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+            if (gruppen.size > 3) {
+                Text(
+                    "… und ${gruppen.size - 3} weitere Arten",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp),
                 )
             }
         }

@@ -21,6 +21,26 @@ import retrofit2.Retrofit
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
+/**
+ * Interne Kopfzeile: verlaengert fuer EINEN Aufruf die Lesefrist (Sekunden).
+ *
+ * Sie verlaesst das Telefon nie, [fristInterceptor] nimmt sie vor dem Senden
+ * wieder heraus. Der Weg ueber eine Annotation statt eines zweiten
+ * OkHttpClient haelt Token, Basis-URL und mTLS an genau einer Stelle.
+ */
+const val LANGE_FRIST_HEADER = "X-Tardis-Frist"
+
+internal val fristInterceptor = Interceptor { chain ->
+    val request = chain.request()
+    val sekunden = request.header(LANGE_FRIST_HEADER)?.toIntOrNull()
+    if (sekunden == null) {
+        chain.proceed(request)
+    } else {
+        chain.withReadTimeout(sekunden, TimeUnit.SECONDS)
+            .proceed(request.newBuilder().removeHeader(LANGE_FRIST_HEADER).build())
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
@@ -78,6 +98,7 @@ object AppModule {
         }
 
         val builder = OkHttpClient.Builder()
+            .addInterceptor(fristInterceptor)
             .addInterceptor(authInterceptor)
             .addInterceptor(loggingInterceptor)
             .connectTimeout(15, TimeUnit.SECONDS)

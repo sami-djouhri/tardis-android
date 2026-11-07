@@ -8,6 +8,7 @@ import org.junit.Test
 import retrofit2.HttpException
 import retrofit2.Response
 import java.io.IOException
+import java.net.SocketTimeoutException
 
 class ExtensionsTest {
 
@@ -29,6 +30,28 @@ class ExtensionsTest {
         val body = "".toResponseBody("text/plain".toMediaTypeOrNull())
         val ex = HttpException(Response.error<Any>(503, body))
         assertTrue(ex.userMessage().contains("Serverfehler"))
+    }
+
+    @Test
+    fun `timeout is not blamed on the vpn`() {
+        val msg = SocketTimeoutException("read timed out").userMessage()
+        assertTrue(msg.contains("Zeitüberschreitung"))
+        assertTrue(!msg.contains("VPN"))
+    }
+
+    @Test
+    fun `gateway detail is appended`() {
+        val body = """{"detail":"unbekannter Dienst: schach"}""".toResponseBody("application/json".toMediaTypeOrNull())
+        val ex = HttpException(Response.error<Any>(404, body))
+        assertEquals("Nicht gefunden: unbekannter Dienst: schach", ex.userMessage())
+    }
+
+    @Test
+    fun `validation detail list is ignored`() {
+        // FastAPI liefert bei 422 eine Liste von Objekten; die gehoert nicht in einen Satz.
+        val body = """{"detail":[{"loc":["query","an"],"msg":"field required"}]}""".toResponseBody("application/json".toMediaTypeOrNull())
+        val ex = HttpException(Response.error<Any>(422, body))
+        assertEquals("Ungültige Daten.", ex.userMessage())
     }
 
     @Test

@@ -129,6 +129,27 @@ melden und die Liste darunter nichts Auffälliges enthalten. Ein nicht
 erreichbarer Host liefert **gar keine Zahlen**: eine `0` wäre die Aussage
 „dort läuft nichts".
 
+### Alarme und Dienste auf Abruf (seit 2.0.10)
+
+| Methode | Pfad | Zweck |
+|---------|------|-------|
+| `GET` | `/v1/ops/alarme` | Aktive Alarme: `{erreichbar, stand, fehler, alarme[]}` |
+| `GET` | `/v1/ops/services/{host}/{name}/detail` | Ein Container: `{container, verbrauch, wirt, verfuegbarkeit, alarme_gemessen, alarme[]}` (seit 2.0.12) |
+| `GET` | `/v1/ops/abruf` | `{wecker: {erreichbar, frei_mb, reserve_mb, dienste[]}, lab: {verfuegbar, veraltet, laeuft, vms[], reserviert}}` |
+| `POST` | `/v1/ops/abruf/{name}/wecken` | Startet einen schlafenden Dienst, Antwort `{ok, zustand}` |
+| `POST` | `/v1/ops/abruf/{name}/wartung?an=true\|false` | Wach halten bzw. freigeben |
+| `POST` | `/v1/ops/lab/{aktion}` | `start`, `stop`, `start-wartung`, `wartung-an`, `wartung-aus`; Antwort `{ok, rc, conflict, log[]}` |
+
+Server-Pflichten: `erreichbar: false` heißt „nicht gemessen" und darf nie als
+leere Liste ankommen. Dasselbe gilt im Dienst-Detail für jeden der vier Teile
+(`gemessen`/`erfasst`) und für `alarme_gemessen`; `verfuegbarkeit.ereignisse`
+enthält nur echte Wechsel (kein `alt: null`), `ram_grenze_bytes` ist `null`,
+wenn keine Grenze gesetzt ist. Dienstnamen und Lab-Aktionen nur aus einer festen Menge,
+nie als Pfad durchgereicht. `zustand` ist der Weckerzustand (`starting`,
+`ready`, `throttled`, `lowmem`, `queued`); nur die ersten beiden sind Erfolg.
+`conflict: true` ist keine Störung: eine belegte Rolle hat Vorrang. Ein
+Lab-Start darf bis zu 200 s dauern, die App wartet dafür 210 s.
+
 ## Dashboard
 
 | Methode | Pfad | Zweck |

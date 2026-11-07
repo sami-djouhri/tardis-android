@@ -1,14 +1,14 @@
-# homelab-app
+# Tardis
 
-![CI](https://github.com/sami-djouhri/homelab-app/actions/workflows/build.yml/badge.svg)
+![CI](https://github.com/sami-djouhri/tardis-android/actions/workflows/build.yml/badge.svg)
 ![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=white)
 ![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
-A native Android ops cockpit for a self-hosted homelab. It pairs with a private
-gateway over a VPN, then lets you watch host metrics, start/stop/restart
-services, read container logs and triage an inbox from the phone.
+A native Android app to run a self-hosted homelab from the phone. It pairs with
+a private gateway over a VPN, then lets you watch host metrics, start/stop/restart
+services, read container logs and triage an inbox.
 
 A device-bound key is generated in the Android Keystore during pairing and never
 leaves the device. Running requests authenticate with a bearer JWT; the client
@@ -80,7 +80,7 @@ branch. CI runs the tests plus Android lint and builds the debug APK.
 
 The gateway base URL is never hardcoded in source. It comes from the scanned QR
 code at runtime; the checked-in build default is a neutral loopback placeholder
-(overridable via `-Pcockpit.gatewayUrl=...` or `COCKPIT_GATEWAY_URL`).
+(overridable via `-Ptardis.gatewayUrl=...` or `TARDIS_GATEWAY_URL`).
 
 ## Stack
 - **Kotlin**, **Jetpack Compose**, **Retrofit/OkHttp**, **Hilt**, Coroutines,

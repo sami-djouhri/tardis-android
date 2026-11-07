@@ -123,6 +123,15 @@ val StatusWarn: Color
 val StatusDown: Color
     @Composable get() = if (istHell()) DangerLight else DangerDark
 
+/**
+ * Leiser Text (Stand, Nebenzeilen). Nicht `colorScheme.outline`: das ist die
+ * Randfarbe (BorderDark, rund 1,3:1 auf der Flaeche) und war bis 2.0.11 an fuenf
+ * Stellen als Textfarbe benutzt, „Stand 06:13 Uhr" war damit unlesbar. Gefunden
+ * erst im Bildschirmfoto-Test mit Demo-Daten.
+ */
+val TextLeise: Color
+    @Composable get() = if (istHell()) TextDimLight else TextDimDark
+
 val StatusIdle: Color
     @Composable get() = if (istHell()) TextDimLight else TextDimDark
 

@@ -1,5 +1,166 @@
 # Changelog
 
+## Topologie als Karte (2026-11-07, 2.0.16)
+
+Neue Karte „Topologie“ auf der Startseite: alle Wirte als Kästen, darin die
+Dienste als farbige Punkte nach Gruppe (grün läuft, grau bewusst aus, rot aus
+obwohl er laufen soll, gelb unbekannt), dazu die Abhängigkeiten als Linien. Mit
+zwei Fingern zoomen und verschieben; ab etwas Zoom erscheinen Gruppennamen,
+weiter hinein die Dienstnamen. Ein Dienst antippen hebt seine Verbindungen
+hervor und zeigt, womit er verbunden ist, samt „Dienst öffnen“. „Nur
+Auffälliges“ dimmt alles, was in Ordnung ist. Jeder Dienst steht bei jedem
+Öffnen an derselben Stelle (festes Raster statt Simulation).
+
+### Was am Code anders ist
+
+- `data/model/tardis/Topologie.kt`: Modell und `kartenLayout()` (reine Funktion,
+  `TopologieLayoutTest` prüft Platz im eigenen Wirt, keine Überlappung, Breite,
+  mit einem Bestand in echter Größe).
+- `ui/topologie/TopologieScreen.kt` (Canvas, `detectTransformGestures` um den
+  Fingermittelpunkt, Antippen im selben Maßstab wie das Zeichnen).
+- Dienstseite: mobile-api 727e014 (`GET v1/ops/topologie`, Zustand in vier Stufen).
+
+## Verlauf mit Filtern (2026-11-07, 2.0.15)
+
+Der Verlauf in der Inbox kann jetzt, was die Web-Fläche Events kann: nach Typ
+(Post, Nachricht, Angebot, Dienst …) und nach Quelle filtern, mit der Zahl je
+Quelle, und dieselbe Meldung wird zu einer Zeile gebündelt („5× seit …“). Das
+Bündeln lässt sich abschalten. Gezeigt werden die letzten 120 Ereignisse statt 50.
+
+### Was am Code anders ist
+
+- `data/model/tardis/Inbox.kt`: `VerlaufZeile` und `gebuendelt()` (Quelle + Titel,
+  ältestes Vorkommen), Unit-Test in `StreamItemTest`.
+- `InboxApi.stream(limit, kinds, sources)`: gefiltert wird am Dienst wie im Web,
+  damit ein Typfilter 120 Treffer dieses Typs zeigt und nicht die wenigen im
+  ungefilterten Fenster.
+- Typ-Chips nur aus dem ungefilterten Fenster gelernt (wie im Web), Quellen
+  gesammelt. Bildschirmfoto-Test `12-verlauf`.
+
+## Verfügbarkeit und schnellere Antworten (2026-11-07, 2.0.14)
+
+Auf der Startseite führt eine neue Karte „Verfügbarkeit“ zu dem, was im Web
+unter Reliability steht: wie verfügbar jeder Dienst in 24 Stunden, 7 und
+30 Tagen war (das Auffällige zuerst, der Rest auf Wunsch), die letzten
+Vorfälle, die Systemmetriken mit Schwelle und der Verlauf von CPU, Speicher,
+Platte und Last über 1, 6 oder 24 Stunden. Dienste, die bewusst nicht laufen
+oder in keiner Liste stehen, stehen unten mit ihrem Grund statt als Ausfall.
+Dazu antworten Start, Dienste und Inbox schneller: der Tagesüberblick kommt aus
+dem letzten Stand und wird im Hintergrund erneuert, die Containerlisten fragen
+nicht mehr jeden Container einzeln ab.
+
+### Was am Code anders ist
+
+- `ui/reliability/ReliabilityScreen.kt` (neu) mit eigenem ViewModel, Route
+  `ReliabilityRoute` als Unterseite der Startseite (die Leiste hat schon fünf
+  Reiter). Karte `SprungKarte` in `OverviewScreen.kt`.
+- `data/model/tardis/Reliability.kt`, `OpsApi.reliability(fenster)`, Demo-Daten
+  mit den drei Arten von „nicht 100 %“; Bildschirmfoto-Test `11-verfuegbarkeit`.
+- Dienstseite: mobile-api 725440a (`GET v1/ops/reliability`), Tardis 0ede7dd und
+  c91b3f3 (schlanke Containerliste), life-ops-api d28c8bd (Tagesüberblick).
+
+## Alarme nach Bereich filtern, Inbox räumt sich auf (2026-11-07, 2.0.13)
+
+Unter Alarme steht statt „nur kritische“ eine Reihe Chips nach Bereich:
+Betrieb, Backup, Netz & Sicherheit, Saganta, Smart Home, Medien, Spiele,
+KI & Wissen, Bots, jeweils mit der Zahl der Alarme. Kritische Alarme stehen
+weiterhin oben. Die Inbox räumt sich jetzt selbst auf: Nachrichten und
+Hinweise gehen nach 24 Stunden ins Archiv, Warnungen und Angebote nach
+7 Tagen, Kritisches bleibt, bis du es abhakst. Die gleiche Meldung aus
+mehreren Kanälen steht nur noch einmal da.
+
+### Was am Code anders ist
+
+- `ui/alarme/AlarmeScreen.kt`: Bereichs-Chips statt `nurKritisch`; ein Bereich,
+  der nach dem Aktualisieren leer ist, fällt auf „Alle“ zurück.
+- `data/model/tardis/Abruf.kt`: Feld `bereich` (mobile-api 28a57d4, aus der
+  Regelgruppe, die der alerts-Dienst seit 42b8082 mitliefert).
+- Inbox-Regeln liegen im Dienst (life-ops-api 315b453), die App brauchte dafür
+  nichts.
+
+## Dienst im Detail, Widget und ein Blick auf jede Fläche (2026-11-03, 2.0.12)
+
+Tippt man einen Dienst an, steht dort jetzt mehr als Zustand und Logs: seit
+wann er läuft und wie oft Docker ihn neu gestartet hat, CPU und
+Arbeitsspeicher jetzt und als Linie über 24 Stunden, wie voll der Rechner ist,
+auf dem er läuft, die Alarme genau dieses Dienstes und, wo es aufgezeichnet
+wird, Verfügbarkeit und die letzten Wechsel. Wo etwas nicht gemessen wird,
+steht das da, statt einer Null. Neu ist ein Widget für den Startbildschirm:
+Zahl der Alarme, der wichtigste davon, und ob Dienste Aufmerksamkeit brauchen,
+mit der Uhrzeit des Stands; ↻ fragt neu. Dazu sind mehrere graue Zeilen wieder
+lesbar (etwa „Stand 06:13 Uhr"), ausgeschaltete Schalter und Knopfränder
+deutlicher, und der erste Reiter heißt „Start", damit er auch bei großer
+Schrift ganz dasteht.
+
+### Was am Code anders ist
+
+- `data/model/tardis/DienstDetail.kt`, `ui/services/DetailKarten.kt`: das
+  Detail aus `GET v1/ops/services/{host}/{name}/detail`, parallel zu Logs und
+  Zustand geladen. Ein älteres Gateway ohne die Route kostet nur die Karten.
+- `widget/`: Glance-Widget. Die offene App schreibt den Stand (Alarme jede
+  Minute, Dienste mit der Übersicht), Android frischt alle 30 min auf. `null`
+  heißt „nicht gemessen", nie 0. Im Demo-Modus wird nichts geschrieben.
+- `test/.../bildschirm/BildschirmeTest.kt`: zehn Flächen per Robolectric und
+  Roborazzi, ausschließlich mit den Demo-Daten (die API scheitert im Test bei
+  jedem Aufruf). `./gradlew :app:recordRoborazziDebug` legt die Bilder unter
+  `app/build/outputs/roborazzi/` ab. Gefunden damit: Text in
+  `colorScheme.outline` (der Randfarbe, rund 1,3:1) an fünf Stellen, jetzt
+  `TextLeise`; `outline` und `outlineVariant` waren im Thema vertauscht.
+- `AbrufViewModel` und `ServiceDetailViewModel` nehmen für den Test den Flow
+  der Bestätigungseinstellung statt des ganzen `SettingsStore`.
+
+## Verlauf in der Inbox (2026-10-31, 2.0.11)
+
+In der Inbox gibt es oben den Knopf „Verlauf". Er zeigt statt der offenen
+Einträge die Zeitleiste aller Ereignisse im Haus: eingegangene Post, neue
+Nachrichten, Alarme, Dienste, die ausfallen und wiederkommen. Jüngste zuerst,
+mit Art, Quelle und wie lange es her ist. „Offen" führt zurück. Die Liste ist
+nur zum Lesen; abgearbeitet wird weiter in der offenen Inbox.
+
+### Was am Code anders ist
+
+- `data/api/InboxApi.kt`: `GET v1/stream`, den `mobile-api` seit Langem
+  anbietet und den keine App abrief.
+- `data/model/tardis/Inbox.kt`: `StreamItem`. Der Dienst liefert
+  `occurred_at` ohne Zonenangabe (naive Spalte, in UTC beschrieben);
+  `zeitpunktUtc` ergänzt das `Z`, sonst schlüge das Parsen fehl und die
+  Zeitangabe fiele still weg.
+- Ein Umschalter im Bereich statt eines sechsten Reiters: die Leiste trägt
+  schon fünf.
+
+## Alarme, Dienste auf Abruf und das AD-Lab (2026-10-31, 2.0.10)
+
+Unten in der Leiste gibt es zwei neue Bereiche. „Alarme" zeigt alles, was
+gerade im Haus Alarm schlägt, auch was nicht an einem Container hängt, etwa
+ein ausgebliebenes Backup oder ein Rechner, der auf seinen Neustart wartet.
+Gleiche Alarme an mehreren Rechnern stehen zusammen, kritische ganz oben, und
+die Zahl der aktiven Alarme steht am Symbol. Ist die Alarmquelle nicht zu
+erreichen, sagt die App „nicht gemessen" statt „alles ruhig". „Abruf" zeigt
+die Dienste, die nur bei Bedarf laufen: wecken mit einem Tipp, wach halten mit
+einem Schalter. Darunter lässt sich das Windows-Lab starten, stoppen und in
+den Wartungsmodus setzen. Fehlermeldungen nennen jetzt den Grund, den das
+Gateway mitschickt, und eine Zeitüberschreitung heißt nicht mehr
+„Ist das VPN aktiv?".
+
+### Was am Code anders ist
+
+- `ui/alarme/AlarmeScreen.kt`: `AlarmeViewModel` gehört der Activity (wie
+  `UpdateViewModel`), damit Zähler an der Leiste, Karte auf der Übersicht und
+  Liste denselben Stand zeigen. Fragt jede Minute, nur im Vordergrund.
+- `ui/abruf/AbrufScreen.kt`: Wecken ohne Bestätigung (es tut dasselbe wie das
+  Aufrufen der Seite im Browser), Wartung und Lab mit der Aktionsbestätigung.
+  Nach dem Wecken wird bis zu 90 s nachgesehen, bis der Healthcheck durch ist.
+- `di/AppModule.kt`: `fristInterceptor` verlängert die Lesefrist für genau den
+  Aufruf, der `X-Tardis-Frist` trägt (Lab: 210 s), und nimmt die Kopfzeile vor
+  dem Senden heraus. Mit den 30 s brach ein VM-Start ab, der weiterlief.
+- `util/Extensions.kt`: `SocketTimeoutException` eigener Text; `detail` aus
+  FastAPI-Fehlern wird angehängt, Validierungslisten nicht.
+- `util/Zeit.kt`: `seitText`/`uhrzeitAus` über `OffsetDateTime`, weil der
+  Alarmdienst Offsets (`+00:00`) statt `Z` schreibt.
+- Monochrom-Ebene fürs Launcher-Symbol (Designsymbole ab Android 13).
+- Gateway-Seite: `/v1/ops/alarme`, `/v1/ops/abruf`, `/v1/ops/abruf/{name}/wecken`,
+  `/v1/ops/abruf/{name}/wartung`, `/v1/ops/lab/{aktion}` (siehe API_CONTRACT).
+
 ## Neuer Paketname: de.djouhri.tardis (2026-10-31, ausgeliefert als 2.0.9)
 
 Die App heißt jetzt auch intern Tardis. Android behandelt sie deshalb als

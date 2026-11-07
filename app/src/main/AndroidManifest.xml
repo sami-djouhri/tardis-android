@@ -38,6 +38,23 @@
         </activity>
 
         <!--
+          Startbildschirm-Widget: Alarme und Dienste, die Aufmerksamkeit
+          brauchen. exported, weil der Launcher es ansprechen muss; es nimmt
+          nur die APPWIDGET_UPDATE-Sendung an und zeigt Zahlen, keine Aktion.
+        -->
+        <receiver
+            android:name=".widget.TardisWidgetReceiver"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/tardis_widget_info" />
+        </receiver>
+
+        <!--
           Reicht die geladene APK an den Installer weiter. Ein `file://`-Uri
           waere seit Android 7 eine FileUriExposedException, also ein Absturz
           genau im letzten Schritt. `android:exported="false"` plus die

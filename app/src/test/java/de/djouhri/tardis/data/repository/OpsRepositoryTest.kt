@@ -3,10 +3,18 @@ package de.djouhri.tardis.data.repository
 import de.djouhri.tardis.data.api.OpsApi
 import de.djouhri.tardis.data.demo.DemoData
 import de.djouhri.tardis.data.demo.DemoModeManager
+import de.djouhri.tardis.data.model.tardis.AbrufResponse
+import de.djouhri.tardis.data.model.tardis.AlarmeResponse
+import de.djouhri.tardis.data.model.tardis.DienstDetail
 import de.djouhri.tardis.data.model.tardis.HostsResponse
+import de.djouhri.tardis.data.model.tardis.LabErgebnis
 import de.djouhri.tardis.data.model.tardis.LogsResponse
+import de.djouhri.tardis.data.model.tardis.ReliabilityResponse
+import de.djouhri.tardis.data.model.tardis.TopologieResponse
 import de.djouhri.tardis.data.model.tardis.ServiceActionResult
 import de.djouhri.tardis.data.model.tardis.ServiceSummary
+import de.djouhri.tardis.data.model.tardis.WartungErgebnis
+import de.djouhri.tardis.data.model.tardis.WeckErgebnis
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -40,6 +48,49 @@ class OpsRepositoryTest {
 
         override suspend fun logs(host: String, name: String, lines: Int): LogsResponse =
             LogsResponse(name = name, host = host, logs = "real-logs")
+
+        var schreibAufrufe = 0
+
+        override suspend fun alarme(): AlarmeResponse = AlarmeResponse(erreichbar = true)
+
+        override suspend fun detail(host: String, name: String): DienstDetail =
+            DienstDetail(host = host, name = name)
+
+        override suspend fun abruf(): AbrufResponse = AbrufResponse()
+
+        override suspend fun reliability(fenster: Int): ReliabilityResponse = ReliabilityResponse(fensterMinuten = fenster)
+
+        override suspend fun topologie(): TopologieResponse = TopologieResponse()
+
+        override suspend fun wecken(name: String): WeckErgebnis {
+            schreibAufrufe++
+            return WeckErgebnis(name = name, ok = true, zustand = "starting")
+        }
+
+        override suspend fun wartung(name: String, an: Boolean): WartungErgebnis {
+            schreibAufrufe++
+            return WartungErgebnis(dienst = name, wartung = an)
+        }
+
+        override suspend fun lab(aktion: String): LabErgebnis {
+            schreibAufrufe++
+            return LabErgebnis(ok = true, rc = 0)
+        }
+    }
+
+    @Test
+    fun `demo mode never wakes or starts anything real`() = runTest {
+        // Die Demo ist oeffentlich klickbar. Ein Knopf darin, der echt weckt
+        // oder ein Lab startet, waere ein Weg ins Haus fuer jeden, der sie oeffnet.
+        val api = FakeOpsApi()
+        val repo = OpsRepository(api, DemoModeManager().apply { enable() })
+
+        repo.wecken("chess").getOrThrow()
+        repo.wartung("chess", true).getOrThrow()
+        repo.lab("start").getOrThrow()
+
+        assertEquals(0, api.schreibAufrufe)
+        assertEquals(DemoData.alarme, repo.alarme().getOrThrow())
     }
 
     @Test

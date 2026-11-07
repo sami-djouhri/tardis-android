@@ -49,6 +49,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import de.djouhri.tardis.data.local.SettingsStore
+import de.djouhri.tardis.data.model.tardis.DienstDetail
 import de.djouhri.tardis.data.model.tardis.ServiceSummary
 import de.djouhri.tardis.data.repository.OpsRepository
 import de.djouhri.tardis.ui.components.StatusDot
@@ -57,12 +58,14 @@ import de.djouhri.tardis.ui.security.rememberDeviceAuth
 import de.djouhri.tardis.ui.theme.StatusDown
 import de.djouhri.tardis.ui.theme.StatusUp
 import de.djouhri.tardis.util.userMessage
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -74,6 +77,9 @@ data class ServiceDetailUiState(
     /** Der ganze Datensatz statt einzelner Felder: nur so stimmt die Einordnung. */
     val service: ServiceSummary? = null,
     val logs: String = "",
+    /** Laufzeit, Verbrauch, Wirt, Verlauf. `null`, solange (oder wenn) es nicht kam. */
+    val detail: DienstDetail? = null,
+    val detailFehler: String? = null,
     val lines: Int = 200,
     val error: String? = null,
     val message: String? = null,
@@ -84,16 +90,22 @@ data class ServiceDetailUiState(
 }
 
 @HiltViewModel
-class ServiceDetailViewModel @Inject constructor(
+class ServiceDetailViewModel(
     private val opsRepository: OpsRepository,
-    settingsStore: SettingsStore,
+    bestaetigungNoetig: Flow<Boolean>,
 ) : ViewModel() {
+
+    // Der Flow statt des ganzen SettingsStore: so laesst sich die Flaeche im
+    // Bildschirmfoto-Test ohne Schluesselspeicher bauen (der fehlt in Robolectric).
+    @Inject constructor(opsRepository: OpsRepository, settingsStore: SettingsStore) :
+        this(opsRepository, settingsStore.requireActionConfirm)
+
 
     private val _state = MutableStateFlow(ServiceDetailUiState())
     val state = _state.asStateFlow()
 
     /** Ob schreibende Aktionen zusaetzlich lokal bestaetigt werden muessen. */
-    val requireConfirm: StateFlow<Boolean> = settingsStore.requireActionConfirm
+    val requireConfirm: StateFlow<Boolean> = bestaetigungNoetig
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     private var initialized = false
@@ -110,14 +122,20 @@ class ServiceDetailViewModel @Inject constructor(
         val name = _state.value.name
         viewModelScope.launch {
             _state.update { it.copy(loading = true, error = null) }
+            // Nebeneinander statt nacheinander: ueber das VPN kostet jeder
+            // Aufruf eine Rundreise, und das Detail fragt Prometheus mehrfach.
+            val detailAuftrag = async { opsRepository.detail(host, name) }
             val svc = opsRepository.services(host).getOrNull()?.firstOrNull { it.name == name }
             val logsResult = opsRepository.logs(host, name, _state.value.lines)
+            val detailResult = detailAuftrag.await()
             _state.update {
                 it.copy(
                     loading = false,
                     service = svc ?: it.service,
                     logs = logsResult.getOrNull()?.logs ?: it.logs,
                     error = logsResult.exceptionOrNull()?.userMessage(),
+                    detail = detailResult.getOrNull() ?: it.detail,
+                    detailFehler = detailResult.exceptionOrNull()?.userMessage(),
                 )
             }
         }
@@ -194,7 +212,19 @@ fun ServiceDetailScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         StatusKarte(state)
+        state.detail?.let { DetailAlarmeKarte(it) }
         AktionsKarte(state, requestAction)
+        state.detail?.let { d ->
+            VerbrauchKarte(d.verbrauch)
+            LaufKarte(d)
+            WirtKarte(d)
+        }
+        state.detailFehler?.let {
+            // Ein aelteres Gateway kennt die Route nicht: dann fehlt nur das
+            // Detail, Aktionen und Logs gehen weiter.
+            Text("Details nicht geladen: $it", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall)
+        }
         LogKarte(state, viewModel, context)
 
         state.error?.let {
