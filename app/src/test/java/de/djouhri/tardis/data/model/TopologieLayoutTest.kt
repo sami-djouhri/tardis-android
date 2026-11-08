@@ -4,7 +4,10 @@ import de.djouhri.tardis.data.demo.DemoData
 import de.djouhri.tardis.data.model.tardis.TopoDienst
 import de.djouhri.tardis.data.model.tardis.TopoWirt
 import de.djouhri.tardis.data.model.tardis.TopologieResponse
+import de.djouhri.tardis.data.model.tardis.auffaelligeDienste
 import de.djouhri.tardis.data.model.tardis.kartenLayout
+import de.djouhri.tardis.data.model.tardis.sucheDienste
+import de.djouhri.tardis.data.model.tardis.wirtKopf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -55,5 +58,38 @@ class TopologieLayoutTest {
     fun keineZweiDiensteAufDemselbenPunkt() {
         val l = kartenLayout(echteGroesse)
         assertEquals(l.dienste.size, l.dienste.values.toSet().size)
+    }
+
+    private val klein = listOf(
+        TopoDienst("a", "Wiki", "alpha", gruppe = "Wissen", zustand = "laeuft"),
+        TopoDienst("b", "git-server", "beta", gruppe = "Werkzeug", zustand = "unbekannt"),
+        TopoDienst("c", "legit", "alpha", gruppe = "Werkzeug", zustand = "aus"),
+        TopoDienst("d", "Backup", "beta", zustand = "bewusst_aus"),
+        TopoDienst("e", "anzeige", "alpha", zustand = "aus"),
+    )
+
+    @Test
+    fun sucheFindetNameWirtUndGruppeOhneGrossKlein_NamensanfangZuerst() {
+        assertEquals(listOf("git-server", "legit"), sucheDienste(klein, "GIT").map { it.label })
+        assertEquals(listOf("anzeige", "legit", "Wiki"), sucheDienste(klein, "alpha").map { it.label })
+        assertEquals(listOf("git-server", "legit"), sucheDienste(klein, "werkzeug").map { it.label })
+        assertTrue(sucheDienste(klein, "   ").isEmpty())
+    }
+
+    @Test
+    fun auffaelligeRotVorGelbDannNachWirt() {
+        assertEquals(listOf("anzeige", "legit", "git-server"), auffaelligeDienste(klein).map { it.label })
+    }
+
+    @Test
+    fun wirtKopfZaehltUndNenntLastNurWennGemessen() {
+        val k = wirtKopf(TopoWirt("alpha", online = true, cpu = 23.7, ram = 61.2), klein.filter { it.wirt == "alpha" })
+        assertEquals(3, k.dienste)
+        assertEquals(2, k.auffaellig)
+        assertEquals("CPU 23 % · RAM 61 %", k.last)
+        val fremd = wirtKopf(null, klein.filter { it.wirt == "beta" })
+        assertEquals(null, fremd.last)
+        assertEquals(null, fremd.online)
+        assertEquals(1, fremd.auffaellig)
     }
 }

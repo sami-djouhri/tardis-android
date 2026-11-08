@@ -37,6 +37,7 @@ import de.djouhri.tardis.data.model.tardis.HostHealth
 import de.djouhri.tardis.data.model.tardis.HostRollup
 import de.djouhri.tardis.data.model.tardis.InboxCounts
 import de.djouhri.tardis.data.model.tardis.ServiceSummary
+import de.djouhri.tardis.data.model.tardis.WirteResponse
 import de.djouhri.tardis.data.repository.DashboardRepository
 import de.djouhri.tardis.data.repository.OpsRepository
 import de.djouhri.tardis.data.model.tardis.gruppiert
@@ -46,6 +47,7 @@ import de.djouhri.tardis.ui.components.StatusDot
 import de.djouhri.tardis.ui.components.serviceStatusColor
 import de.djouhri.tardis.ui.components.usageColor
 import de.djouhri.tardis.ui.theme.TextLeise
+import de.djouhri.tardis.ui.wirte.WirteKarte
 import de.djouhri.tardis.ui.theme.StatusDown
 import de.djouhri.tardis.ui.theme.StatusIdle
 import de.djouhri.tardis.ui.theme.StatusUp
@@ -74,6 +76,8 @@ data class OverviewUiState(
     /** Nur die Container, die wirklich auffaellig sind. Nachgeladen, nicht geraten. */
     val probleme: List<ServiceSummary> = emptyList(),
     val health: HostHealth? = null,
+    /** Alle Wirte mit Verlauf. Fehlt die Antwort, bleibt der alte host-Momentwert. */
+    val wirte: WirteResponse? = null,
     val inbox: InboxCounts = InboxCounts(),
     /**
      * Wann diese Zahlen zuletzt vom Gateway kamen (epoch ms, null = noch nie).
@@ -124,10 +128,11 @@ class OverviewViewModel @Inject constructor(
                     error = if (still) it.error else null,
                 )
             }
-            val (hostsResult, summaryResult) = coroutineScope {
+            val (hostsResult, summaryResult, wirteResult) = coroutineScope {
                 val a = async { opsRepository.hosts() }
                 val b = async { dashboardRepository.summary() }
-                a.await() to b.await()
+                val c = async { opsRepository.wirte(60) }
+                Triple(a.await(), b.await(), c.await())
             }
 
             hostsResult.fold(
@@ -140,6 +145,8 @@ class OverviewViewModel @Inject constructor(
                             error = null,
                             hosts = hosts,
                             health = summary?.health,
+                            // Ein gescheiterter Abruf haelt den letzten Stand, statt die Karte zu leeren.
+                            wirte = wirteResult.getOrNull() ?: it.wirte,
                             inbox = summary?.inboxCounts ?: it.inbox,
                             zuletzt = System.currentTimeMillis(),
                         )
@@ -197,6 +204,8 @@ fun OverviewScreen(
     onOpenVerfuegbarkeit: () -> Unit = {},
     /** Unterseite Topologie (zoombare Karte, seit 2.0.16). */
     onOpenTopologie: () -> Unit = {},
+    /** Unterseite Wirte (alle Wirte mit Verlauf, seit 2.0.17). */
+    onOpenWirte: () -> Unit = {},
     viewModel: OverviewViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -247,7 +256,15 @@ fun OverviewScreen(
                     ContainerRollupCard(state, onOpenServices)
                     if (alarme.kritisch == 0) AlarmKurzKarte(alarme, onOpenAlarme)
                     if (state.probleme.isNotEmpty()) ProblemCard(state.probleme, onOpenServices, onOpenDetail)
-                    state.health?.let { HostMetricsCard(it) }
+                    // Vor 2.0.17 stand hier nur der Momentwert von host. Er
+                    // bleibt als Rueckfall, falls die Wirte-Antwort fehlt.
+                    val wirte = state.wirte
+                    if (wirte != null && wirte.gemessen) {
+                        WirteKarte(wirte, onOpenWirte)
+                    } else {
+                        state.health?.let { HostMetricsCard(it) }
+                        wirte?.let { WirteKarte(it, onOpenWirte) }
+                    }
                     InboxSummaryCard(state.inbox)
                     SprungKarte("Verfügbarkeit", "Uptime je Dienst, Vorfälle, Cluster-Verlauf", onOpenVerfuegbarkeit)
                     SprungKarte("Topologie", "Karte aller Wirte, Dienste und Verbindungen", onOpenTopologie)
@@ -496,7 +513,7 @@ private fun AlarmKurzKarte(alarme: AlarmeUiState, onOpenAlarme: () -> Unit) {
 private fun HostMetricsCard(health: HostHealth) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Host-System", style = MaterialTheme.typography.titleMedium)
+            Text("host jetzt", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
             MetricRow("CPU", health.cpuPercent.formatPercent(), usageColor(health.cpuPercent))
             val memLabel = if (health.memoryUsed != null && health.memoryTotal != null) {

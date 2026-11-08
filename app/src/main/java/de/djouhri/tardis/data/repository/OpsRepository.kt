@@ -10,6 +10,7 @@ import de.djouhri.tardis.data.model.tardis.HostRollup
 import de.djouhri.tardis.data.model.tardis.LabErgebnis
 import de.djouhri.tardis.data.model.tardis.LogsResponse
 import de.djouhri.tardis.data.model.tardis.ReliabilityResponse
+import de.djouhri.tardis.data.model.tardis.WirteResponse
 import de.djouhri.tardis.data.model.tardis.TopologieResponse
 import de.djouhri.tardis.data.model.tardis.ServiceActionResult
 import de.djouhri.tardis.data.model.tardis.ServiceSummary
@@ -68,6 +69,11 @@ class OpsRepository @Inject constructor(
     suspend fun reliability(fenster: Int = 60): Result<ReliabilityResponse> {
         if (demo.isActive) return Result.success(DemoData.reliability(fenster))
         return runCatching { api.reliability(fenster) }
+    }
+
+    suspend fun wirte(fenster: Int = 60): Result<WirteResponse> {
+        if (demo.isActive) return Result.success(DemoData.wirte(fenster))
+        return runCatching { api.wirte(fenster) }
     }
 
     suspend fun topologie(): Result<TopologieResponse> {

@@ -33,6 +33,9 @@ import de.djouhri.tardis.data.model.tardis.TopoDienst
 import de.djouhri.tardis.data.model.tardis.TopoVerbindung
 import de.djouhri.tardis.data.model.tardis.TopoWirt
 import de.djouhri.tardis.data.model.tardis.TopologieResponse
+import de.djouhri.tardis.data.model.tardis.WirtMessung
+import de.djouhri.tardis.data.model.tardis.WirtVerlauf
+import de.djouhri.tardis.data.model.tardis.WirteResponse
 
 /**
  * Statische, bewusst neutrale Beispieldaten fuer den Demo-Modus. Host-Namen sind
@@ -212,6 +215,40 @@ object DemoData {
         )
     }
 
+    // Ein ruhiger Wirt, einer unter Last, einer mit voller Platte, ein Gast, der
+    // die Last seines Nodes zeigt, und einer, der gerade nicht antwortet (Reihe
+    // mit Luecke, kein Momentwert). So sieht man in der Demo jede Faerbung.
+    fun wirte(fenster: Int): WirteResponse {
+        val n = 90
+        fun welle(basis: Double, hub: Double, phase: Int = 0): List<Double?> =
+            (0 until n).map { basis + hub * kotlin.math.sin((it + phase) / 9.0) }
+        fun wirt(name: String, cpu: List<Double?>, ram: Double, platte: Double, load: Double, node: String? = null, kerne: Int = 4) =
+            WirtMessung(
+                name = name, node = node, erreichbar = true,
+                cpu = cpu.last(), ram = ram, platte = platte, load = load, kerne = kerne, temp = 48.0,
+                verlauf = WirtVerlauf(cpu = cpu, ram = List(n) { ram }, platte = List(n) { platte }, load = cpu.map { it?.div(25) }),
+            )
+        val vmHost = welle(55.0, 30.0, 3)
+        return WirteResponse(
+            gemessen = true,
+            fensterMinuten = fenster,
+            start = 1_761_900_000L,
+            schritt = fenster * 60 / n,
+            wirte = listOf(
+                wirt("edge", welle(8.0, 4.0), 31.0, 22.0, 0.3),
+                wirt("app-node", welle(41.0, 20.0, 20), 78.0, 63.0, 2.1),
+                wirt("compute", welle(18.0, 6.0, 40), 52.0, 91.0, 0.9, kerne = 8),
+                wirt("vm-host", vmHost, 44.0, 38.0, 3.4),
+                wirt("ai-guest", vmHost, 61.0, 47.0, 3.4, node = "vm-host"),
+                WirtMessung(
+                    name = "lab-node",
+                    erreichbar = false,
+                    verlauf = WirtVerlauf(cpu = welle(12.0, 3.0).mapIndexed { i, v -> if (i < 50) v else null }),
+                ),
+            ),
+        )
+    }
+
     // Ein grosser Wirt mit Gruppen, zwei kleine, zwei ohne Dienste; je ein
     // Dienst in jedem der vier Zustaende und ein paar Abhaengigkeiten.
     val topologie: TopologieResponse = run {
@@ -231,11 +268,11 @@ object DemoData {
         TopologieResponse(
             stand = "2026-10-31T12:00:00Z",
             wirte = listOf(
-                TopoWirt("app-node", dienste = 24, online = true),
-                TopoWirt("edge", dienste = 2, online = true),
+                TopoWirt("app-node", dienste = 24, online = true, cpu = 23.0, ram = 61.0),
+                TopoWirt("edge", dienste = 2, online = true, cpu = 4.0, ram = 38.0),
                 TopoWirt("compute", dienste = 1, online = true),
                 TopoWirt("internet"),
-                TopoWirt("storage-box"),
+                TopoWirt("storage-box", online = false),
             ),
             dienste = gross + klein,
             verbindungen = listOf(

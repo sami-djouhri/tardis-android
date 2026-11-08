@@ -7,6 +7,7 @@ import de.djouhri.tardis.data.model.tardis.HostsResponse
 import de.djouhri.tardis.data.model.tardis.LabErgebnis
 import de.djouhri.tardis.data.model.tardis.LogsResponse
 import de.djouhri.tardis.data.model.tardis.ReliabilityResponse
+import de.djouhri.tardis.data.model.tardis.WirteResponse
 import de.djouhri.tardis.data.model.tardis.TopologieResponse
 import de.djouhri.tardis.data.model.tardis.ServiceActionResult
 import de.djouhri.tardis.data.model.tardis.ServiceSummary
@@ -57,6 +58,10 @@ interface OpsApi {
     /** Verfuegbarkeit wie die Web-Flaeche Reliability; `fenster` 60, 360 oder 1440 Minuten. */
     @GET("v1/ops/reliability")
     suspend fun reliability(@Query("fenster") fenster: Int = 60): ReliabilityResponse
+
+    /** CPU, Speicher, Platte und Load aller Wirte mit Verlauf; `fenster` 60, 360 oder 1440 Minuten. */
+    @GET("v1/ops/wirte")
+    suspend fun wirte(@Query("fenster") fenster: Int = 60): WirteResponse
 
     /** Wirte, Dienste und Verbindungen fuer die Karte (verschlankt aus Tardis /api/topology/graph). */
     @GET("v1/ops/topologie")

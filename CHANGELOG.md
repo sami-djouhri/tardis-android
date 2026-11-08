@@ -1,5 +1,98 @@
 # Changelog
 
+## Topologie: Ausfall-Kette, Linsen, Wirt-Blatt, Änderungen (2026-11-08, 2.0.20)
+
+Ein Dienst zeigt jetzt seine Kette: was er braucht und wer mit ausfällt, auch
+über mehrere Stufen; auf der Karte nach oben in Akzentfarbe, nach unten orange.
+Dienste, die laufen, aber etwas brauchen, das aus ist, tragen einen orangen
+Ring und stehen oben als „mitbetroffen“. „Farbe“ schaltet die Karte auf
+Erreichbarkeit (öffentlich, eigene Geräte, nur lokal) oder Klasse (CORE, OPS,
+PUBLIC, INTERNAL) um, mit Legende; kaputte Dienste behalten dabei einen roten
+Ring. „Linien“ blendet Verbindungsarten ein und aus. Ein Wirt-Kopf öffnet sein
+Blatt: online, IP, Last, Temperatur, Load, Container, Backup-Alter, Drift, mit
+Sprung zum Verlauf. Die Dienstkarte nennt Klasse, Erreichbarkeit und Port und
+öffnet die Web-Oberfläche im Browser. Offen frischt sich die Karte jede Minute
+auf; was sich seit dem letzten Öffnen geändert hat, pulsiert und steht in einem
+Hinweis oben, antippen zeigt die Liste.
+
+### Was am Code anders ist
+
+- mobile-api `deec4dd`: Wirt-Felder (ip, temp, load, backup_alter_h,
+  backup_alt, drift_geister/_fehlend, container), Dienst-Felder
+  (erreichbarkeit in drei Stufen, port, url), Verbindungs-Label.
+- `Topologie.kt`: `abhaengigkeitsKette` (depends zeigt vom Abhängigen auf das
+  Gebrauchte, Zyklen sicher), `mitBetroffen`, `Linse`/`linsenWert`,
+  `aenderungen` gegen `TopoSchnappschuss`, `zeitpunktText`.
+- `TopologieGedaechtnis`: letzter gesehener Stand in SharedPreferences, im
+  Demo-Modus weder gelesen noch geschrieben. Basis bleibt je Sitzung fest.
+- Leises Auffrischen nur im Vordergrund (`repeatOnLifecycle(RESUMED)`), bei
+  Fehler bleibt die Karte stehen, Hinweis „Auffrischen fehlgeschlagen“.
+- Ist ein Dienst gewählt, dimmen Suche und Filter seine Kette nicht.
+- Tests: `TopologieKetteTest` (7), `TopologieKarteTest` (+5).
+
+## Topologie: Suche, Wirt-Köpfe, Gruppen (2026-11-08, 2.0.19)
+
+Über der Karte ein Suchfeld (Dienst, Wirt, Gruppe oder Container): die Treffer
+stehen als Liste über der Karte, Antippen springt zum Dienst und öffnet ihn.
+„Nur Auffälliges“ zeigt dieselbe Liste mit den roten und gelben Diensten, rot
+zuerst. Jeder Wirt trägt im Kopf einen Punkt (grün online, rot offline, Ring
+unbekannt), die Zahl seiner Dienste, wie viele auffällig sind, und CPU/RAM, wo
+Platz ist; Antippen des Kopfs zoomt auf den Wirt. Gruppennamen stehen jetzt
+immer da, mit Dienstzahl. Zurück schließt einen gewählten Dienst.
+
+### Was am Code anders ist
+
+- `sucheDienste`, `auffaelligeDienste`, `wirtKopf` in `Topologie.kt`, mit
+  Unit-Tests; Gruppenüberschrift „Name · Zahl“.
+- Wirt-Kopf wird vorab gemessen; reicht die Breite nicht, fällt zuerst die
+  Last weg, der Name wird gekürzt statt über die Zahlen zu laufen.
+- `TopologieKarteTest`: Suche mit Antippen, Auffälliges-Liste, Wirt-Kopf.
+- Demo-Daten: Last an zwei Wirten, `storage-box` offline.
+
+## Topologie stürzt nicht mehr ab (2026-11-08, 2.0.18)
+
+Die Topologie hat die App beim Öffnen beendet, sobald die Karte höher war als
+der Bildschirm, also mit den echten rund 260 Diensten immer. Behoben. Dazu:
+Dienstnamen beim Hineinzoomen auf Punktbreite gekürzt („…“) statt über den
+Nachbarn geschrieben, die Karte bleibt beim Verschieben im Bild und malt nicht
+mehr über die Filterknöpfe, „Erneut versuchen“ zeigt wieder den Ladezustand.
+
+### Was am Code anders ist
+
+- Ursache: `drawText(messer, text, topLeft)` leitet seine Grenzen aus der
+  Canvas in Pixeln minus Startpunkt ab, der Startpunkt stand in
+  Kartenkoordinaten. Unterhalb der Canvashöhe wurde die Höhe negativ,
+  `Constraints` warf `IllegalArgumentException`.
+- Beschriftungen werden einmal gemessen (`remember`) und als
+  `TextLayoutResult` gezeichnet; kein Neu-Messen je Zoom-Frame mehr.
+- Layout auf `Dispatchers.Default`, `clipToBounds`, Verschieben begrenzt.
+- Test `TopologieKarteTest`: Größe wie live (erfundene Namen) auf
+  360x740 dp, mit Zoom und Wischen. Nur im Aufnahmelauf
+  (`recordRoborazziDebug`) wird wirklich gezeichnet; ein normaler
+  `testDebugUnitTest` war mit demselben Fehler grün.
+
+## Alle Wirte mit Verlauf (2026-11-08, 2.0.17)
+
+Neue Karte „Wirte“ auf der Startseite statt des Momentwerts von host: alle
+Wirte untereinander, je mit CPU-Linie der letzten Stunde und CPU, RAM und
+Platte in Prozent; die Farbe folgt dem knappsten Wert, ein stummer Wirt heißt
+„nicht erreichbar“. Antippen öffnet die Unterseite mit 1, 6 oder 24 Stunden
+und vier Linien je Wirt (CPU, Speicher, Platte, Load bis zur Kernzahl).
+Prozent steht immer auf 0 bis 100, damit sich Wirte vergleichen lassen.
+LXC-Gäste tragen „Gast auf <Node>“: sie sehen CPU und Load ihres Nodes.
+
+### Was am Code anders ist
+
+- Quelle `GET /v1/ops/wirte?fenster=` (mobile-api) auf Tardis
+  `/api/metrics/wirte`: je node-exporter-Job feste PromQL-Ausdrücke, ein Abruf
+  für alle Wirte, Reihen auf gemeinsamem Raster, Lücke = `null`.
+- `data/model/tardis/Wirte.kt`, `ui/wirte/WirteScreen.kt` (Unterseite und
+  `WirteKarte` der Startseite), Demo-Daten mit jeder Färbung.
+- `ui/components/Verlaufslinie.kt` ersetzt die private Linie der
+  Verfügbarkeit: setzt an Lücken ab und kennt eine feste Skala.
+- Fehlt die Wirte-Antwort, zeigt die Startseite weiter „host jetzt“.
+- Tests: `WirteTest`, Bildschirmfoto `14-wirte`.
+
 ## Topologie als Karte (2026-11-07, 2.0.16)
 
 Neue Karte „Topologie“ auf der Startseite: alle Wirte als Kästen, darin die

@@ -15,6 +15,7 @@ import de.djouhri.tardis.data.model.tardis.ServiceActionResult
 import de.djouhri.tardis.data.model.tardis.ServiceSummary
 import de.djouhri.tardis.data.model.tardis.WartungErgebnis
 import de.djouhri.tardis.data.model.tardis.WeckErgebnis
+import de.djouhri.tardis.data.model.tardis.WirteResponse
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -61,6 +62,8 @@ class OpsRepositoryTest {
         override suspend fun reliability(fenster: Int): ReliabilityResponse = ReliabilityResponse(fensterMinuten = fenster)
 
         override suspend fun topologie(): TopologieResponse = TopologieResponse()
+
+        override suspend fun wirte(fenster: Int): WirteResponse = WirteResponse(fensterMinuten = fenster)
 
         override suspend fun wecken(name: String): WeckErgebnis {
             schreibAufrufe++

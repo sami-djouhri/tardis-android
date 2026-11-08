@@ -30,6 +30,8 @@ import de.djouhri.tardis.ui.reliability.ReliabilityScreen
 import de.djouhri.tardis.ui.topologie.TopologieScreen
 import de.djouhri.tardis.ui.topologie.TopologieViewModel
 import de.djouhri.tardis.ui.reliability.ReliabilityViewModel
+import de.djouhri.tardis.ui.wirte.WirteScreen
+import de.djouhri.tardis.ui.wirte.WirteViewModel
 import de.djouhri.tardis.ui.abruf.AbrufScreen
 import de.djouhri.tardis.ui.abruf.AbrufViewModel
 import de.djouhri.tardis.ui.alarme.AlarmeScreen
@@ -67,8 +69,11 @@ import java.lang.reflect.Proxy
  * Bild trotzdem mit Inhalt heraus, stammt er nachweislich aus der Demo.
  *
  * Erzeugen: `./gradlew :app:recordRoborazziDebug`, Bilder unter
- * `app/build/outputs/roborazzi/`. Ein normaler `testDebugUnitTest` zeichnet
- * dieselben Flaechen ohne Bild, faengt also Abstuerze beim Aufbau.
+ * `app/build/outputs/roborazzi/`. Ein normaler `testDebugUnitTest` baut
+ * dieselben Flaechen ohne Bild auf, faengt also Abstuerze beim Aufbau.
+ * Abstuerze beim ZEICHNEN (Canvas, drawText) faengt nur der Aufnahmelauf:
+ * ohne Bild laeuft unter Robolectric keine Zeichenphase. So blieb der
+ * Topologie-Absturz in 2.0.16 und 2.0.17 verborgen.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -179,6 +184,11 @@ class BildschirmeTest {
     }
 
     /** Fuenf Eintraege auf 360 dp: steht „Übersicht" noch ganz da? */
+    @Test
+    fun wirte() = bild("14-wirte") {
+        WirteScreen(WirteViewModel(ops))
+    }
+
     @Test
     fun leiste() = bild("09-leiste") { Leiste() }
 

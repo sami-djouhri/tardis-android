@@ -1,17 +1,13 @@
 package de.djouhri.tardis.ui.reliability
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Card
@@ -30,13 +26,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -50,6 +40,7 @@ import de.djouhri.tardis.data.model.tardis.VerlaufReihe
 import de.djouhri.tardis.data.model.tardis.Vorfall
 import de.djouhri.tardis.data.repository.OpsRepository
 import de.djouhri.tardis.ui.components.ErrorMessage
+import de.djouhri.tardis.ui.components.Verlaufslinie
 import de.djouhri.tardis.ui.theme.StatusDown
 import de.djouhri.tardis.ui.theme.StatusUp
 import de.djouhri.tardis.ui.theme.StatusWarn
@@ -256,7 +247,7 @@ private fun VerlaufZeile(r: VerlaufReihe) {
             color = if (r.erreichbar) MaterialTheme.colorScheme.onSurface else StatusWarn,
         )
     }
-    Linie(werte, "${r.titel} im gewählten Zeitraum")
+    Verlaufslinie(werte, "${r.titel} im gewählten Zeitraum")
 }
 
 @Composable
@@ -281,7 +272,7 @@ private fun SystemZeile(m: SystemMetrik) {
             color = if (m.ueberSchwelle) StatusDown else MaterialTheme.colorScheme.onSurface,
         )
     }
-    Linie(m.werte, "Verlauf ${m.metrik}", if (m.ueberSchwelle) StatusDown else null)
+    Verlaufslinie(m.werte, "Verlauf ${m.metrik}", farbe = if (m.ueberSchwelle) StatusDown else null)
 }
 
 @Composable
@@ -315,31 +306,4 @@ private fun VorfallZeile(v: Vorfall) {
             Text(zeile, style = MaterialTheme.typography.bodySmall, color = if (v.neu == "running") StatusUp else StatusWarn)
         }
     }
-}
-
-/** Eine Linie ohne Achsen: auf dem Telefon zählt die Form, der Wert steht darüber. */
-@Composable
-private fun Linie(werte: List<Double>, beschreibung: String, farbe: Color? = null) {
-    if (werte.size < 2) return
-    val strich = farbe ?: MaterialTheme.colorScheme.primary
-    val grund = MaterialTheme.colorScheme.outlineVariant
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(36.dp)
-            .semantics { contentDescription = beschreibung },
-    ) {
-        val min = werte.min()
-        val spanne = (werte.max() - min).takeIf { it > 0 } ?: 1.0
-        val schritt = size.width / (werte.size - 1)
-        drawLine(grund, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1f)
-        val pfad = Path()
-        werte.forEachIndexed { i, w ->
-            val x = i * schritt
-            val y = (size.height - 2f) - ((w - min) / spanne).toFloat() * (size.height - 4f)
-            if (i == 0) pfad.moveTo(x, y) else pfad.lineTo(x, y)
-        }
-        drawPath(pfad, strich, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
-    }
-    Spacer(Modifier.height(2.dp).width(0.dp))
 }

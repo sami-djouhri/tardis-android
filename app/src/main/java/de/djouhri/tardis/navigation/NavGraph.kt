@@ -46,6 +46,7 @@ import de.djouhri.tardis.ui.inbox.InboxScreen
 import kotlinx.coroutines.delay
 import de.djouhri.tardis.ui.overview.OverviewScreen
 import de.djouhri.tardis.ui.reliability.ReliabilityScreen
+import de.djouhri.tardis.ui.wirte.WirteScreen
 import de.djouhri.tardis.ui.topologie.TopologieScreen
 import de.djouhri.tardis.ui.services.ServiceDetailScreen
 import de.djouhri.tardis.ui.services.ServicesScreen
@@ -63,6 +64,7 @@ import kotlinx.serialization.Serializable
 @Serializable object SettingsRoute
 @Serializable object ReliabilityRoute
 @Serializable object TopologieRoute
+@Serializable object WirteRoute
 @Serializable data class ServiceDetailRoute(val host: String, val name: String)
 
 private data class TopLevelDest(
@@ -110,6 +112,7 @@ fun TardisMainScreen(
         currentDestination?.hasRoute(SettingsRoute::class) == true -> "Einstellungen"
         currentDestination?.hasRoute(ReliabilityRoute::class) == true -> "Verfügbarkeit"
         currentDestination?.hasRoute(TopologieRoute::class) == true -> "Topologie"
+        currentDestination?.hasRoute(WirteRoute::class) == true -> "Wirte"
         currentDestination?.hasRoute(ServiceDetailRoute::class) == true ->
             backStackEntry?.toRoute<ServiceDetailRoute>()?.name ?: "Dienst"
         currentDestination?.hierarchy?.any { it.hasRoute(ServicesRoute::class) } == true -> "Dienste"
@@ -203,6 +206,7 @@ fun TardisMainScreen(
                         onAlarmeNeu = { alarmeViewModel.load() },
                         onOpenVerfuegbarkeit = { navController.navigate(ReliabilityRoute) { launchSingleTop = true } },
                         onOpenTopologie = { navController.navigate(TopologieRoute) { launchSingleTop = true } },
+                        onOpenWirte = { navController.navigate(WirteRoute) { launchSingleTop = true } },
                         onOpenAlarme = {
                             navController.navigate(AlarmeRoute) {
                                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -236,7 +240,13 @@ fun TardisMainScreen(
                     ReliabilityScreen()
                 }
                 composable<TopologieRoute> {
-                    TopologieScreen(onOpenDetail = { host, name -> navController.navigate(ServiceDetailRoute(host, name)) })
+                    TopologieScreen(
+                        onOpenDetail = { host, name -> navController.navigate(ServiceDetailRoute(host, name)) },
+                        onOpenWirte = { navController.navigate(WirteRoute) { launchSingleTop = true } },
+                    )
+                }
+                composable<WirteRoute> {
+                    WirteScreen()
                 }
                 composable<SettingsRoute> {
                     SettingsScreen(updateViewModel = updateViewModel)
