@@ -1,5 +1,24 @@
 # Changelog
 
+## Bildschirmschutz (2026-11-14, 2.0.22)
+
+Die App lässt keine Bildschirmfotos und keine Aufnahme durch andere Apps mehr
+zu, und in der App-Übersicht steht nur eine leere Vorschau. Hostnamen, Logs und
+Freigaben gehören in keine Bildschirmaufnahme. Auch du selbst kannst in der App
+kein Bildschirmfoto mehr machen.
+
+## Freigaben für Pull-Deploy (2026-11-14, 2.0.21)
+
+Neu: Freigaben für Deploys. Oben rechts zeigt ein Schild, wie viele Deploys auf
+deine Freigabe warten. Jeder Eintrag nennt Projekt und Wirt, die Commits, den
+Diff und eine Ampel: grün nur Inhalt und Code, gelb Abhängigkeiten oder Compose-
+Grenzen, rot Rechte, Netz, Image oder der erste Stand. „Freigeben“ unterschreibt
+mit einem eigenen Schlüssel, den das Telefon nur nach Fingerabdruck oder PIN
+benutzt, für jede Freigabe einzeln. Der Wirt prüft die Unterschrift selbst und
+holt den Stand binnen einer Minute; scheitert er, rollt er zurück, und die App
+zeigt das. Alle 15 Minuten sieht die App im Hintergrund nach und meldet neue
+Freigaben als Benachrichtigung.
+
 ## Topologie: Ausfall-Kette, Linsen, Wirt-Blatt, Änderungen (2026-11-08, 2.0.20)
 
 Ein Dienst zeigt jetzt seine Kette: was er braucht und wer mit ausfällt, auch

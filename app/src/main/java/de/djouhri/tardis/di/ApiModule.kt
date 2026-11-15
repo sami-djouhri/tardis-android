@@ -5,6 +5,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import de.djouhri.tardis.data.api.DashboardApi
+import de.djouhri.tardis.data.api.FreigabenApi
 import de.djouhri.tardis.data.api.InboxApi
 import de.djouhri.tardis.data.api.OpsApi
 import de.djouhri.tardis.data.api.PairingApi
@@ -35,4 +36,8 @@ object ApiModule {
     @Provides
     @Singleton
     fun provideVersionApi(retrofit: Retrofit): VersionApi = retrofit.create(VersionApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideFreigabenApi(retrofit: Retrofit): FreigabenApi = retrofit.create(FreigabenApi::class.java)
 }

@@ -38,6 +38,9 @@ import de.djouhri.tardis.ui.alarme.AlarmeScreen
 import de.djouhri.tardis.ui.alarme.AlarmeUiState
 import de.djouhri.tardis.ui.alarme.AlarmeViewModel
 import de.djouhri.tardis.ui.inbox.InboxScreen
+import de.djouhri.tardis.data.repository.FreigabenRepository
+import de.djouhri.tardis.ui.freigaben.FreigabenInhalt
+import de.djouhri.tardis.ui.freigaben.FreigabenUiState
 import de.djouhri.tardis.ui.inbox.InboxViewModel
 import de.djouhri.tardis.ui.overview.OverviewScreen
 import de.djouhri.tardis.ui.overview.OverviewViewModel
@@ -201,5 +204,16 @@ class BildschirmeTest {
         Column {
             TardisLeiste(aktiv = { it == AlarmeRoute }, alarme = alarmeGeladen, onWahl = {})
         }
+    }
+
+    @Test
+    fun freigaben() = bild("20-freigaben") {
+        FreigabenInhalt(
+            state = FreigabenUiState(loading = false, antwort = FreigabenRepository.DEMO, fingerabdruck = "0".repeat(64)),
+            geraeteschutz = true,
+            onFreigeben = {},
+            onSchluessel = {},
+            onNeu = {},
+        )
     }
 }

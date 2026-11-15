@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,6 +44,8 @@ import de.djouhri.tardis.ui.abruf.AbrufScreen
 import de.djouhri.tardis.ui.alarme.AlarmeScreen
 import de.djouhri.tardis.ui.alarme.AlarmeViewModel
 import de.djouhri.tardis.ui.inbox.InboxScreen
+import de.djouhri.tardis.ui.freigaben.FreigabenScreen
+import de.djouhri.tardis.ui.freigaben.FreigabenViewModel
 import kotlinx.coroutines.delay
 import de.djouhri.tardis.ui.overview.OverviewScreen
 import de.djouhri.tardis.ui.reliability.ReliabilityScreen
@@ -65,6 +68,7 @@ import kotlinx.serialization.Serializable
 @Serializable object ReliabilityRoute
 @Serializable object TopologieRoute
 @Serializable object WirteRoute
+@Serializable object FreigabenRoute
 @Serializable data class ServiceDetailRoute(val host: String, val name: String)
 
 private data class TopLevelDest(
@@ -86,6 +90,8 @@ private val topLevelDests = listOf(
 fun TardisMainScreen(
     demoActive: Boolean = false,
     sessionExpired: Boolean = false,
+    /** Gesetzt, wenn die App ueber die Freigabe-Benachrichtigung geoeffnet wurde. */
+    oeffneFreigaben: Int = 0,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -97,11 +103,18 @@ fun TardisMainScreen(
     val alarme by alarmeViewModel.state.collectAsState()
     // Jede Minute nachsehen, solange die App im Vordergrund ist. Im
     // Hintergrund fragt sie nichts: dafuer gibt es ntfy.
+    // Wartende Freigaben fuer den Zaehler oben rechts; derselbe Stand wie auf der Seite.
+    val freigabenViewModel: FreigabenViewModel = hiltViewModel()
+    val freigaben by freigabenViewModel.state.collectAsState()
     LaunchedEffect(demoActive) {
         while (true) {
             alarmeViewModel.load()
+            freigabenViewModel.load()
             delay(60_000)
         }
+    }
+    LaunchedEffect(oeffneFreigaben) {
+        if (oeffneFreigaben > 0) navController.navigate(FreigabenRoute) { launchSingleTop = true }
     }
 
     val isTopLevel = topLevelDests.any { dest ->
@@ -113,6 +126,7 @@ fun TardisMainScreen(
         currentDestination?.hasRoute(ReliabilityRoute::class) == true -> "Verfügbarkeit"
         currentDestination?.hasRoute(TopologieRoute::class) == true -> "Topologie"
         currentDestination?.hasRoute(WirteRoute::class) == true -> "Wirte"
+        currentDestination?.hasRoute(FreigabenRoute::class) == true -> "Freigaben"
         currentDestination?.hasRoute(ServiceDetailRoute::class) == true ->
             backStackEntry?.toRoute<ServiceDetailRoute>()?.name ?: "Dienst"
         currentDestination?.hierarchy?.any { it.hasRoute(ServicesRoute::class) } == true -> "Dienste"
@@ -135,6 +149,18 @@ fun TardisMainScreen(
                 },
                 actions = {
                     if (isTopLevel) {
+                        val wartend = freigaben.antwort?.wartend?.size ?: 0
+                        IconButton(onClick = {
+                            navController.navigate(FreigabenRoute) { launchSingleTop = true }
+                        }) {
+                            if (wartend > 0) {
+                                BadgedBox(badge = { Badge { Text("$wartend") } }) {
+                                    Icon(Icons.Filled.VerifiedUser, contentDescription = "Freigaben, $wartend wartend")
+                                }
+                            } else {
+                                Icon(Icons.Filled.VerifiedUser, contentDescription = "Freigaben")
+                            }
+                        }
                         IconButton(onClick = {
                             navController.navigate(SettingsRoute) { launchSingleTop = true }
                         }) {
@@ -247,6 +273,9 @@ fun TardisMainScreen(
                 }
                 composable<WirteRoute> {
                     WirteScreen()
+                }
+                composable<FreigabenRoute> {
+                    FreigabenScreen(freigabenViewModel)
                 }
                 composable<SettingsRoute> {
                     SettingsScreen(updateViewModel = updateViewModel)

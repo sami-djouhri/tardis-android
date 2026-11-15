@@ -69,6 +69,47 @@ class DeviceAuthController(private val activity: FragmentActivity) {
 
         prompt.authenticate(info)
     }
+
+    /**
+     * Gibt eine Keystore-[Signature] per Fingerabdruck/PIN frei (CryptoObject).
+     *
+     * Anders als [authenticate] ist das keine Zusatzschicht: der Freigabeschluessel
+     * unterschreibt ohne diesen Schritt gar nicht. Ohne Geraeteschutz gibt es
+     * deshalb auch keinen Rueckfall auf einen Textdialog.
+     */
+    fun unterschreiben(
+        title: String,
+        subtitle: String,
+        signature: java.security.Signature,
+        onSuccess: (java.security.Signature) -> Unit,
+        onFailed: (String) -> Unit,
+    ) {
+        val prompt = BiometricPrompt(
+            activity,
+            ContextCompat.getMainExecutor(activity),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    val sig = result.cryptoObject?.signature
+                    if (sig == null) onFailed("Keystore hat die Unterschrift nicht freigegeben") else onSuccess(sig)
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    if (errorCode != BiometricPrompt.ERROR_USER_CANCELED &&
+                        errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON
+                    ) {
+                        onFailed(errString.toString())
+                    }
+                }
+            },
+        )
+        val info = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(title)
+            .setSubtitle(subtitle)
+            .setAllowedAuthenticators(authenticators)
+            .apply { if (authenticators and DEVICE_CREDENTIAL == 0) setNegativeButtonText("Abbrechen") }
+            .build()
+        prompt.authenticate(info, BiometricPrompt.CryptoObject(signature))
+    }
 }
 
 /** Liefert einen [DeviceAuthController], wenn eine FragmentActivity vorhanden ist. */

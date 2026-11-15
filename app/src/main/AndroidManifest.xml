@@ -11,6 +11,14 @@
       muss der Nutzer sie dieser App einmal ausdruecklich geben.
     -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!--
+      Pull-Deploy-Freigaben: der FreigabeWaechter (JobScheduler, alle 15 min)
+      meldet wartende Deploys als Benachrichtigung. RECEIVE_BOOT_COMPLETED,
+      damit der geplante Job einen Neustart des Telefons ueberlebt
+      (setPersisted); die App empfaengt dafuer selbst nichts.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <uses-feature
         android:name="android.hardware.camera"
@@ -26,6 +34,11 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="true"
         android:theme="@style/Theme.HomelabApp">
+
+        <service
+            android:name=".freigaben.FreigabeWaechter"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
 
         <activity
             android:name=".MainActivity"
