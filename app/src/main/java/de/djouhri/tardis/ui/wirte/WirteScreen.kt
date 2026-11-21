@@ -16,7 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.Card
+import de.djouhri.tardis.ui.components.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -87,6 +87,8 @@ class WirteViewModel @Inject constructor(
 private val FENSTER = listOf(60 to "1 h", 360 to "6 h", 1440 to "24 h")
 private val PROZENT = 0.0..100.0
 
+private fun prozent(p: Double): String = prozent(p as Double?)
+
 private fun prozent(p: Double?): String =
     p?.let { String.format(Locale.GERMANY, "%.0f %%", it) } ?: "–"
 
@@ -150,7 +152,7 @@ fun WirteScreen(viewModel: WirteViewModel = hiltViewModel()) {
                 if (!a.gemessen) {
                     item { Text("Nicht gemessen: ${a.fehler ?: "Prometheus nicht erreichbar"}", color = StatusWarn) }
                 } else {
-                    items(a.wirte, key = { it.name }) { WirtKarte(it) }
+                    items(a.wirte, key = { it.name }) { WirtKarte(it, a.zeiten(it.verlauf.cpu.size)) }
                 }
             }
         }
@@ -158,7 +160,7 @@ fun WirteScreen(viewModel: WirteViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun WirtKarte(w: WirtMessung) {
+private fun WirtKarte(w: WirtMessung, zeiten: List<Long>?) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -178,11 +180,11 @@ private fun WirtKarte(w: WirtMessung) {
                 Text("Gast auf $it: CPU, Load und Temperatur sind die des Nodes", style = MaterialTheme.typography.bodySmall, color = TextLeise)
             }
             MesswertZeile("CPU", prozent(w.cpu), usageColor(w.cpu), w.erreichbar)
-            Verlaufslinie(w.verlauf.cpu, "CPU von ${w.name}", farbe = linienFarbe(w.erreichbar), bereich = PROZENT)
+            Verlaufslinie(w.verlauf.cpu, "CPU von ${w.name}", farbe = linienFarbe(w.erreichbar), bereich = PROZENT, hoehe = 48.dp, zeiten = zeiten, wertText = ::prozent)
             MesswertZeile("Speicher", prozent(w.ram), usageColor(w.ram), w.erreichbar)
-            Verlaufslinie(w.verlauf.ram, "Speicher von ${w.name}", farbe = linienFarbe(w.erreichbar), bereich = PROZENT)
+            Verlaufslinie(w.verlauf.ram, "Speicher von ${w.name}", farbe = linienFarbe(w.erreichbar), bereich = PROZENT, hoehe = 48.dp, zeiten = zeiten, wertText = ::prozent)
             MesswertZeile("Platte /", prozent(w.platte), usageColor(w.platte), w.erreichbar)
-            Verlaufslinie(w.verlauf.platte, "Platte von ${w.name}", farbe = linienFarbe(w.erreichbar), bereich = PROZENT)
+            Verlaufslinie(w.verlauf.platte, "Platte von ${w.name}", farbe = linienFarbe(w.erreichbar), bereich = PROZENT, hoehe = 48.dp, zeiten = zeiten, wertText = ::prozent)
             // Load ist keine Prozentzahl: die Skala reicht bis zur Kernzahl,
             // darueber wartet Arbeit. Ohne Kernzahl streckt sie sich selbst.
             val loadText = w.load?.let { String.format(Locale.GERMANY, "%.2f", it) + (w.kerne?.let { k -> " / $k" } ?: "") } ?: "–"
@@ -193,6 +195,9 @@ private fun WirtKarte(w: WirtMessung) {
                 "Load von ${w.name}",
                 farbe = linienFarbe(w.erreichbar),
                 bereich = if (loadMax > 0) 0.0..loadMax else null,
+                hoehe = 48.dp,
+                zeiten = zeiten,
+                wertText = { String.format(Locale.GERMANY, "Load %.2f", it) },
             )
         }
     }
@@ -251,7 +256,7 @@ fun WirteKarte(antwort: WirteResponse, onOpen: () -> Unit) {
                 SpaltenKopf("CPU 1 h", 56)
                 SpaltenKopf("CPU", 40)
                 SpaltenKopf("RAM", 40)
-                SpaltenKopf("Platte", 44)
+                SpaltenKopf("Platte", 50)
             }
             antwort.wirte.forEach { KurzZeile(it) }
         }
@@ -295,7 +300,7 @@ private fun KurzZeile(w: WirtMessung) {
         if (w.erreichbar) {
             Wert(prozent(w.cpu), usageColor(w.cpu), 40)
             Wert(prozent(w.ram), usageColor(w.ram), 40)
-            Wert(prozent(w.platte), usageColor(w.platte), 44)
+            Wert(prozent(w.platte), usageColor(w.platte), 50)
         } else {
             Text(
                 "nicht erreichbar",

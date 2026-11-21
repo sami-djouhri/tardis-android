@@ -44,7 +44,7 @@ val gatewayUrl: String = (project.findProperty("tardis.gatewayUrl") as String?)?
 // und ein Normalweg ohne Handgriff ist einer, den man nicht vergessen kann.
 val tardisVersionCode: Int = (project.findProperty("tardis.versionCode") as String?)?.toIntOrNull()
     ?: System.getenv("TARDIS_VERSION_CODE")?.toIntOrNull()
-    ?: 22
+    ?: 31
 
 android {
     namespace = "de.djouhri.tardis"

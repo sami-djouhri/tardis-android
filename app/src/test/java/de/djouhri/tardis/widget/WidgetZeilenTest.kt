@@ -47,4 +47,12 @@ class WidgetZeilenTest {
         assertTrue(z.fuss.endsWith("· nicht erreichbar"))
         assertTrue(z.fuss.startsWith("Stand "))
     }
+
+    @Test
+    fun `erster alarm traegt seine id`() {
+        val z = widgetZeilen(WidgetStand(alarme = 1, alarmeStandMs = 0, ersterAlarm = "Platte voll", ersterAlarmId = "A-7K2Q"))
+        assertEquals("A-7K2Q · Platte voll", z.alarmText)
+        val ohne = widgetZeilen(WidgetStand(alarme = 1, alarmeStandMs = 0, ersterAlarm = "Platte voll"))
+        assertEquals("Platte voll", ohne.alarmText)
+    }
 }

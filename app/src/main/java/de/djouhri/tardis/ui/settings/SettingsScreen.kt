@@ -1,5 +1,19 @@
 package de.djouhri.tardis.ui.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import de.djouhri.tardis.ui.theme.Aussehen
+import de.djouhri.tardis.ui.theme.LocalTardisEffekte
+import de.djouhri.tardis.ui.theme.LocalTardisTon
+import de.djouhri.tardis.ui.theme.TardisTon
+import de.djouhri.tardis.ui.theme.glut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,7 +27,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import de.djouhri.tardis.ui.components.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -324,6 +338,8 @@ fun SettingsScreen(
             }
         }
 
+        AussehenKarte()
+
         GeraeteKarte(state, viewModel)
 
         state.error?.let {
@@ -528,5 +544,37 @@ private fun GeraeteKarte(state: SettingsUiState, viewModel: SettingsViewModel) {
             },
             dismissButton = { TextButton(onClick = { confirmWiderruf = null }) { Text("Abbrechen") } },
         )
+    }
+}
+
+/**
+ * Effekte an oder aus. Wirkt sofort und ohne ViewModel: der Zustand liegt in
+ * [Aussehen], das Theme liest ihn direkt. Die Farbwahl ist seit 2.0.31 weg,
+ * die App ist fest blau.
+ */
+@Composable
+internal fun AussehenKarte() {
+    val context = LocalContext.current
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Aussehen", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Effekte", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Nebel, Flimmern, Glitch bei neuem Alarm, Glut um Ausfälle. " +
+                            "Aus heißt: nichts bewegt sich.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Switch(
+                    checked = LocalTardisEffekte.current,
+                    onCheckedChange = { Aussehen.setzeEffekte(context, it) },
+                )
+            }
+        }
     }
 }

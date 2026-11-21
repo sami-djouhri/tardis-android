@@ -26,6 +26,8 @@ data class WidgetStand(
     val kritisch: Int = 0,
     /** Kurztext des wichtigsten Alarms (die Liste ist nach Schwere sortiert). */
     val ersterAlarm: String? = null,
+    /** Kurze Alarm-ID des wichtigsten Alarms, dieselbe wie in ntfy. */
+    val ersterAlarmId: String? = null,
     val alarmeStandMs: Long? = null,
     val probleme: Int? = null,
     /** Rechner, die nicht antworteten: deren Dienste sind nicht mitgezaehlt. */
@@ -61,11 +63,12 @@ class WidgetSpeicher @Inject constructor(
         if (demo.isActive) return false
         val alt = lesen()
         schreiben(
-            if (!a.erreichbar) alt.copy(alarme = null, ersterAlarm = null, kritisch = 0, alarmeStandMs = jetztMs)
+            if (!a.erreichbar) alt.copy(alarme = null, ersterAlarm = null, ersterAlarmId = null, kritisch = 0, alarmeStandMs = jetztMs)
             else alt.copy(
                 alarme = a.alarme.size,
                 kritisch = a.kritisch,
                 ersterAlarm = a.alarme.firstOrNull()?.zusammenfassung,
+                ersterAlarmId = a.alarme.firstOrNull()?.kurzId,
                 alarmeStandMs = jetztMs,
                 zuletztFehler = false,
             ),

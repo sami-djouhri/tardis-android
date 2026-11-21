@@ -3,6 +3,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Sprach-host (2.0.25): nur solange der Knopf gedrueckt ist. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!--
       Die App laedt ihr eigenes Update vom gekoppelten Gateway und uebergibt es
       Androids Paket-Installer. Ohne diese Erlaubnis oeffnet sich der Dialog gar
@@ -37,6 +39,29 @@
 
         <service
             android:name=".freigaben.FreigabeWaechter"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <!--
+          Notknopf (seit 2.0.24): Schnelleinstellungs-Kachel „Tresore zu", nur
+          schliessen. exported, weil die Systemleiste sie bindet; geschuetzt
+          durch BIND_QUICK_SETTINGS_TILE, das nur das System halten kann. Die
+          Arbeit macht der Job daneben, damit sie das Zuschieben der Leiste
+          uebersteht.
+        -->
+        <service
+            android:name=".tresore.NotknopfKachel"
+            android:exported="true"
+            android:icon="@drawable/ic_launcher_monochrome"
+            android:label="Tresore zu"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".tresore.NotknopfJob"
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 

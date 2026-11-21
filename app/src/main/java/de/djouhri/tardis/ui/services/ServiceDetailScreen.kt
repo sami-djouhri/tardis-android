@@ -1,5 +1,11 @@
 package de.djouhri.tardis.ui.services
 
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -22,7 +28,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import de.djouhri.tardis.ui.components.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -339,19 +345,11 @@ private fun LogKarte(
     viewModel: ServiceDetailViewModel,
     context: Context,
 ) {
-    val logScroll = rememberScrollState()
-    // Ans Ende springen, sobald neue Zeilen da sind: die interessante Zeile
-    // eines Logs ist die letzte. Vorher stand man am Anfang und scrollte bei
-    // 500 Zeilen von Hand nach unten.
-    //
-    // Der Schluessel enthaelt `maxValue` mit Absicht. Beim ersten Durchlauf ist
-    // der Text noch nicht vermessen, `maxValue` also 0; ein Sprung dorthin
-    // waere ein Sprung an den Anfang und saehe genauso aus wie gar kein Sprung.
-    LaunchedEffect(state.logs, logScroll.maxValue) {
-        if (state.logs.isNotEmpty() && logScroll.maxValue > 0) {
-            logScroll.scrollTo(logScroll.maxValue)
-        }
-    }
+    val zeilen = remember(state.logs) { logZeilen(state.logs) }
+    var filter by rememberSaveable { mutableStateOf(LogFilter.ALLE) }
+    var suche by rememberSaveable { mutableStateOf("") }
+    var umbruch by rememberSaveable { mutableStateOf(true) }
+    var vollbild by rememberSaveable { mutableStateOf(false) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -360,6 +358,9 @@ private fun LogKarte(
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { viewModel.refresh() }) {
                     Icon(Icons.Filled.Refresh, contentDescription = "Logs neu laden")
+                }
+                IconButton(onClick = { vollbild = true }, enabled = zeilen.isNotEmpty()) {
+                    Icon(Icons.Filled.Fullscreen, contentDescription = "Logs im Vollbild")
                 }
                 IconButton(
                     onClick = {
@@ -386,19 +387,31 @@ private fun LogKarte(
             if (state.loading && state.logs.isBlank()) {
                 Text("Lade Logs…", style = MaterialTheme.typography.bodySmall)
             } else {
-                Text(
-                    state.logs.ifBlank { "(keine Logs)" },
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 380.dp)
-                        .verticalScroll(logScroll)
-                        .horizontalScroll(rememberScrollState()),
-                )
+                LogAnsicht(zeilen, filter, { filter = it }, suche, { suche = it }, umbruch, { umbruch = it }, hoehe = 380.dp)
+            }
+        }
+    }
+
+    if (vollbild) {
+        Dialog(
+            onDismissRequest = { vollbild = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Column(Modifier.fillMaxSize().padding(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Logs ${state.name}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { viewModel.refresh() }) {
+                            Icon(Icons.Filled.Refresh, contentDescription = "Logs neu laden")
+                        }
+                        IconButton(onClick = { vollbild = false }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Vollbild schließen")
+                        }
+                    }
+                    LogAnsicht(zeilen, filter, { filter = it }, suche, { suche = it }, umbruch, { umbruch = it }, hoehe = null)
+                }
             }
         }
     }
 }
+

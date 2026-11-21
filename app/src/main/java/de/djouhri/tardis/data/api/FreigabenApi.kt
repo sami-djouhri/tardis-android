@@ -1,5 +1,8 @@
 package de.djouhri.tardis.data.api
 
+import de.djouhri.tardis.data.model.tardis.BefehlAngenommen
+import de.djouhri.tardis.data.model.tardis.BefehlUnterschrift
+import de.djouhri.tardis.data.model.tardis.BefehleAntwort
 import de.djouhri.tardis.data.model.tardis.FreigabeErgebnis
 import de.djouhri.tardis.data.model.tardis.FreigabenAntwort
 import de.djouhri.tardis.data.model.tardis.SchluesselGemeldet
@@ -26,4 +29,11 @@ interface FreigabenApi {
         @Path("commit") commit: String,
         @Body body: Unterschrift,
     ): FreigabeErgebnis
+
+    /** Befehls-Freigabe: die Schranke ist der root-Laeufer auf host, das Gateway legt nur ab. */
+    @GET("v1/befehle")
+    suspend fun befehle(): BefehleAntwort
+
+    @POST("v1/befehle/{id}/freigeben")
+    suspend fun befehlFreigeben(@Path("id") id: String, @Body body: BefehlUnterschrift): BefehlAngenommen
 }

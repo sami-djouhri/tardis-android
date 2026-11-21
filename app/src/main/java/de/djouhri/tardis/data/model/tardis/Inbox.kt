@@ -23,6 +23,21 @@ data class InboxItem(
     val state: String = "open",
     val note: String? = null,
     @SerialName("age_hours") val ageHours: Double? = null,
+    /** Weg zur Quelle: Artikel bei Nachrichten, OCR-Ansicht bei Briefen. */
+    @SerialName("action_url") val actionUrl: String? = null,
+    /** Nachrichten: Thema der Engine (z.B. security_vuln). */
+    val thema: String? = null,
+    /** Nachrichten: alle Quellen mit Link, die erste ist actionUrl. */
+    val links: List<InboxLink> = emptyList(),
+    @SerialName("source_count") val sourceCount: Int? = null,
+    /** Sicherheitsmeldungen: „Im Haus: …“ aus dem Bestand der Laufzeiten. */
+    val bezug: String? = null,
+)
+
+@Serializable
+data class InboxLink(
+    val quelle: String? = null,
+    val url: String = "",
 )
 
 @Serializable

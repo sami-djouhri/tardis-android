@@ -1,5 +1,10 @@
 package de.djouhri.tardis.ui.alarme
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,7 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.Card
+import de.djouhri.tardis.ui.components.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -59,6 +65,8 @@ data class AlarmeUiState(
     /** Der Abruf selbst scheiterte (Netz, Token). Etwas anderes als `antwort.erreichbar == false`. */
     val error: String? = null,
     val antwort: AlarmeResponse? = null,
+    /** Zeitpunkt (epoch ms), wenn [antwort] der letzte Stand aus dem Speicher ist. */
+    val altStand: Long? = null,
 ) {
     /** Nur mit einer erreichbaren Quelle ist eine Zahl eine Aussage. */
     val anzahl: Int? get() = antwort?.takeIf { it.erreichbar }?.alarme?.size
@@ -82,11 +90,13 @@ class AlarmeViewModel @Inject constructor(
     fun load(refresh: Boolean = false) {
         viewModelScope.launch {
             _state.update { it.copy(refreshing = refresh) }
-            opsRepository.alarme().fold(
-                onSuccess = { a ->
-                    _state.update { AlarmeUiState(loading = false, antwort = a) }
-                    // Das Widget bekommt denselben Stand, den die Leiste zeigt.
-                    if (widget.alarmeGesehen(a)) widget.neuZeichnen()
+            opsRepository.alarmeStand().fold(
+                onSuccess = { stand ->
+                    val a = stand.daten
+                    _state.update { AlarmeUiState(loading = false, antwort = a, altStand = stand.alt) }
+                    // Das Widget bekommt denselben Stand, den die Leiste zeigt;
+                    // ein alter aus dem Speicher nicht, er truege sonst „jetzt".
+                    if (stand.alt == null && widget.alarmeGesehen(a)) widget.neuZeichnen()
                 },
                 onFailure = { e ->
                     // Die letzte gute Liste bleibt stehen, der Fehler kommt dazu:
@@ -209,6 +219,13 @@ private fun Kopf(
 @Composable
 private fun AlarmKarte(gruppe: AlarmGruppe) {
     val farbe = if (gruppe.istKritisch) StatusDown else StatusWarn
+    val context = LocalContext.current
+    // Gedrueckt halten kopiert die Alarm-ID (dieselbe wie in ntfy und im Web).
+    fun kopiere(id: String) {
+        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("alarm-id", id))
+        Toast.makeText(context, "Alarm-ID $id kopiert", Toast.LENGTH_SHORT).show()
+    }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -225,17 +242,24 @@ private fun AlarmKarte(gruppe: AlarmGruppe) {
             }
             gruppe.alarme.forEach { a ->
                 Spacer(Modifier.height(6.dp))
+                val id = a.kurzId ?: gruppe.name
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(onClick = {}, onLongClick = { kopiere(id) }),
+                ) {
                 Text(a.zusammenfassung, style = MaterialTheme.typography.bodyMedium)
                 a.beschreibung?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                val neben = listOfNotNull(a.instanz, seitText(a.seit))
+                val neben = listOfNotNull(a.kurzId, a.instanz, seitText(a.seit))
                 if (neben.isNotEmpty()) {
                     Text(
                         neben.joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
                         color = TextLeise,
                     )
+                }
                 }
             }
         }

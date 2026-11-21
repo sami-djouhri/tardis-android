@@ -192,7 +192,10 @@ fun widgetZeilen(s: WidgetStand): WidgetZeilen {
         append(uhrzeit(stand)?.let { "Stand $it" } ?: "noch kein Stand")
         if (s.zuletztFehler) append(" · nicht erreichbar")
     }
-    return WidgetZeilen(alarmZeile, alarmTon, s.ersterAlarm, diensteZeile, diensteTon, fuss)
+    // Mit ID vorn: auf dem Startbildschirm laesst sich nichts kopieren, aber
+    // ablesen und in ntfy oder Tardis-Web wiederfinden.
+    val alarmText = s.ersterAlarm?.let { t -> s.ersterAlarmId?.let { "$it · $t" } ?: t }
+    return WidgetZeilen(alarmZeile, alarmTon, alarmText, diensteZeile, diensteTon, fuss)
 }
 
 @Composable

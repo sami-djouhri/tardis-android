@@ -1,5 +1,6 @@
 package de.djouhri.tardis.ui.services
 
+import de.djouhri.tardis.ui.components.Verlaufslinie
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Card
+import de.djouhri.tardis.ui.components.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -169,7 +170,14 @@ internal fun VerbrauchKarte(v: Verbrauch) {
                 return@Column
             }
             Wert("CPU", cpuText(v.cpuKerne))
-            Verlaufslinie(v.verlaufCpu, "CPU, letzte 24 Stunden")
+            Spacer(Modifier.height(4.dp))
+            Verlaufslinie(
+                v.verlaufCpu.mapNotNull { it.getOrNull(1) },
+                "CPU, letzte 24 Stunden",
+                hoehe = 44.dp,
+                zeiten = v.verlaufCpu.zeitenOderNull(),
+                wertText = ::cpuText,
+            )
             Spacer(Modifier.height(10.dp))
             Wert(
                 "RAM",
@@ -181,48 +189,28 @@ internal fun VerbrauchKarte(v: Verbrauch) {
                 },
                 farbe = v.ramAnteil?.let { if (it >= 0.9) StatusDown else if (it >= 0.75) StatusWarn else null },
             )
-            Verlaufslinie(v.verlaufRam, "Arbeitsspeicher, letzte 24 Stunden")
+            Spacer(Modifier.height(4.dp))
+            Verlaufslinie(
+                v.verlaufRam.mapNotNull { it.getOrNull(1) },
+                "Arbeitsspeicher, letzte 24 Stunden",
+                hoehe = 44.dp,
+                zeiten = v.verlaufRam.zeitenOderNull(),
+                wertText = { it.toLong().formatBytes() },
+            )
         }
     }
 }
+
+/** Zeitstempel der Paare [unix_s, wert]; nur wenn jedes Paar einen Wert hat, sonst verrutscht die Achse. */
+private fun List<List<Double>>.zeitenOderNull(): List<Long>? =
+    takeIf { l -> l.all { it.size >= 2 } }?.map { it[0].toLong() }
+
+private fun cpuText(kerne: Double): String = cpuText(kerne as Double?)
 
 private fun cpuText(kerne: Double?): String = when {
     kerne == null -> "–"
     kerne < 1.0 -> "%.0f\u00A0%% eines Kerns".format(kerne * 100)
     else -> "%.1f Kerne".format(kerne)
-}
-
-/**
- * Eine Linie ueber 24 h, ohne Achsen: auf dem Telefon geht es um die Form
- * (Spitze heute Nacht? waechst er stetig?), nicht um den Wert einer Stunde.
- * Der Wert steht darueber.
- */
-@Composable
-private fun Verlaufslinie(punkte: List<List<Double>>, beschreibung: String) {
-    val werte = punkte.mapNotNull { it.getOrNull(1) }
-    if (werte.size < 2) return
-    val farbe = MaterialTheme.colorScheme.primary
-    val grund = MaterialTheme.colorScheme.outlineVariant
-    Spacer(Modifier.height(4.dp))
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(40.dp)
-            .semantics { contentDescription = beschreibung },
-    ) {
-        val min = werte.min()
-        val max = werte.max()
-        val spanne = (max - min).takeIf { it > 0 } ?: 1.0
-        val schritt = size.width / (werte.size - 1)
-        drawLine(grund, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1f)
-        val pfad = Path()
-        werte.forEachIndexed { i, w ->
-            val x = i * schritt
-            val y = (size.height - 2f) - ((w - min) / spanne).toFloat() * (size.height - 4f)
-            if (i == 0) pfad.moveTo(x, y) else pfad.lineTo(x, y)
-        }
-        drawPath(pfad, farbe, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round))
-    }
 }
 
 /** Wie voll der Rechner ist, auf dem der Dienst laeuft. */

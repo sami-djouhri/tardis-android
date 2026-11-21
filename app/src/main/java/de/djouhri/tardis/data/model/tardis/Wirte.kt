@@ -20,7 +20,14 @@ data class WirteResponse(
     val start: Long? = null,
     val schritt: Int? = null,
     val wirte: List<WirtMessung> = emptyList(),
-)
+) {
+    /** Unix-Sekunden je Rasterpunkt, `null` ohne Raster (dann zeigt die Linie keine Uhrzeiten). */
+    fun zeiten(anzahl: Int): List<Long>? {
+        val s = start ?: return null
+        val d = schritt?.takeIf { it > 0 } ?: return null
+        return List(anzahl) { s + it.toLong() * d }
+    }
+}
 
 @Serializable
 data class WirtMessung(

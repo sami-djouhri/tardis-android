@@ -19,6 +19,14 @@ class FreigabeNachrichtTest {
         assertArrayEquals(erwartet, FreigabeSchluessel.nachricht("node1", "tanko", "clients/tanko", "a".repeat(40), 1800000000L))
     }
 
+    /** Derselbe Vektor steht in befehls-freigabe/tests/test_laeufer.py und mobile-api/tests/test_befehle.py. */
+    @Test
+    fun befehlNachrichtIstMitLaeuferUndGatewayAbgestimmt() {
+        val erwartet = ("homelab-befehl-v1\nwirt=host\nid=a-1\nsha256=" + "0".repeat(64) + "\nausgestellt=5\n")
+            .toByteArray(Charsets.UTF_8)
+        assertArrayEquals(erwartet, FreigabeSchluessel.befehlNachricht("a-1", "0".repeat(64), 5L))
+    }
+
     @Test
     fun fingerabdruckIstSha256KleinHex() {
         // SHA-256 von "abc", bekannter Pruefwert

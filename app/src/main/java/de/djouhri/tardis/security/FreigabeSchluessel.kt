@@ -45,6 +45,10 @@ class FreigabeSchluessel @Inject constructor() {
             "$KOPF\nwirt=$wirt\nprojekt=$projekt\nrepo=$repo\ncommit=$commit\nausgestellt=$ausgestellt\n"
                 .toByteArray(Charsets.UTF_8)
 
+        /** Befehls-Freigabe: gleich zu befehls-freigabe/laeufer.py und mobile-api/routers/befehle.py. */
+        fun befehlNachricht(id: String, sha256: String, ausgestellt: Long, wirt: String = "host"): ByteArray =
+            "homelab-befehl-v1\nwirt=$wirt\nid=$id\nsha256=$sha256\nausgestellt=$ausgestellt\n".toByteArray(Charsets.UTF_8)
+
         /** SHA-256 ueber SubjectPublicKeyInfo, klein-hex; dieselbe Zahl rechnet der Zielwirt. */
         fun fingerabdruck(spki: ByteArray): String =
             MessageDigest.getInstance("SHA-256").digest(spki).joinToString("") { "%02x".format(it) }

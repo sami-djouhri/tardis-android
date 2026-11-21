@@ -59,25 +59,34 @@ import androidx.compose.ui.graphics.Color
  */
 
 // ───────────────────────── Dunkel, der Normalfall ─────────────────────────
-val BgDark              = Color(0xFF14171A)
-val SurfaceDarkFlaeche  = Color(0xFF1B1F23)
-val SurfaceHoverDark    = Color(0xFF22272C)
-val SurfaceSunkenDark   = Color(0xFF101316)
-val BorderDark          = Color(0xFF2B3138)
-val BorderStrongDark    = Color(0xFF3D454E)
+// Seit 2.0.31 (2026-11-21) Blau, Entscheid: eine feste Farbe statt der
+// Farbwahl aus 2.0.30. Grund und Flaechen sind Blauschwarz, der Akzent ein
+// helles Blau; Fehler ist wieder Rot (vorher Pink, weil Rot der Akzent war).
+// Kontraste prueft SchattenTest gegen das fertige Schema.
+val BgDark              = Color(0xFF04070D)
+val SurfaceDarkFlaeche  = Color(0xFF0A1220)
+val SurfaceHoverDark    = Color(0xFF111B2D)
+val SurfaceSunkenDark   = Color(0xFF03050A)
+val BorderDark          = Color(0xFF1A2A44)
+val BorderStrongDark    = Color(0xFF27406A)
 
-val TextPrimaryDark     = Color(0xFFE6E9EC)  // 13.60:1 auf der Flaeche
-val TextSecondaryDark   = Color(0xFFA0A8B1)  //  6.89:1
-val TextDimDark         = Color(0xFF848C95)  //  4.87:1
+val TextPrimaryDark     = Color(0xFFD6E2F2)
+val TextSecondaryDark   = Color(0xFF97AAC4)
+val TextDimDark         = Color(0xFF8196B2)
 
-val SuccessDark         = Color(0xFF5F9E6F)  //  5.22:1
-val WarningDark         = Color(0xFFBF9535)  //  5.97:1
-val DangerDark          = Color(0xFFE4685A)  //  5.07:1
-val InfoDark            = Color(0xFF6D8AA8)  //  4.62:1
-val SuccessSoftDark     = Color(0xFF1A2A20)
-val WarningSoftDark     = Color(0xFF2B2416)
-val DangerSoftDark      = Color(0xFF331A16)
-val InfoSoftDark        = Color(0xFF1A2229)
+val AccentDark          = Color(0xFF4C9AFF)
+val AccentHellDark      = Color(0xFF8CBEFF)
+val AccentSoftDark      = Color(0xFF0D1E38)
+val AccentForegroundDark = Color(0xFF020814)
+
+val SuccessDark         = Color(0xFF7FD18B)  // 10.98:1
+val WarningDark         = Color(0xFFE8C547)  // 12.05:1
+val DangerDark          = Color(0xFFFF6B6B)
+val InfoDark            = Color(0xFF8FB3D9)  //  9.26:1
+val SuccessSoftDark     = Color(0xFF0F2213)
+val WarningSoftDark     = Color(0xFF2A230C)
+val DangerSoftDark      = Color(0xFF2E0E12)
+val InfoSoftDark        = Color(0xFF0F1A26)
 
 // ───────────────────────── Hell, gleichwertig gebaut ──────────────────────
 val BgLight             = Color(0xFFEEF0F2)

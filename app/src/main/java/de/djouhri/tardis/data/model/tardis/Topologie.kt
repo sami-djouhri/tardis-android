@@ -156,6 +156,7 @@ enum class Linse(val titel: String) {
     ZUSTAND("Zustand"),
     ERREICHBARKEIT("Erreichbarkeit"),
     KLASSE("Klasse"),
+    WIRT("Wirt"),
 }
 
 /** Schluessel, nach dem eine Linse einen Dienst einordnet; die Farbe macht die Oberflaeche. */
@@ -163,6 +164,7 @@ fun linsenWert(d: TopoDienst, linse: Linse): String = when (linse) {
     Linse.ZUSTAND -> d.zustand
     Linse.ERREICHBARKEIT -> d.erreichbarkeit ?: "unbekannt"
     Linse.KLASSE -> d.klasse?.uppercase()?.takeIf { it in setOf("CORE", "OPS", "PUBLIC", "INTERNAL") } ?: "sonst"
+    Linse.WIRT -> d.wirt
 }
 
 /** Deutsche Namen der Verbindungsarten, in der Reihenfolge der Auswahl. */
@@ -325,3 +327,190 @@ private const val GROSS_AB = 20
 private const val GROSS_SPALTEN = 10
 private const val KLEIN_SPALTEN = 5
 private const val LEER_HOEHE = 34f
+
+
+/**
+ * „Was waere, wenn X aus ist?“ wie `durchspielen()` im Web (kette.ts). Ein Wirt
+ * nimmt alles mit, was auf ihm laeuft, danach folgt die Rechnung den
+ * depends-Verbindungen. Nur was gerade laeuft, kann mit ausfallen: was schon
+ * aus ist, ist kein neuer Schaden.
+ */
+data class Durchspiel(
+    /** Was im Gedankenspiel ausfaellt: der gewaehlte Knoten, bei einem Wirt auch alles darauf. */
+    val aus: Set<String>,
+    /** Wer deshalb mit ausfaellt -> die ausgefallenen Ursachen. */
+    val folgen: Map<String, List<String>>,
+    val istWirt: Boolean,
+)
+
+fun durchspielen(id: String, t: TopologieResponse): Durchspiel {
+    val istWirt = t.wirte.any { it.id == id } || (t.dienste.none { it.id == id } && t.dienste.any { it.wirt == id })
+    val aus = LinkedHashSet<String>().apply {
+        add(id)
+        if (istWirt) t.dienste.filter { it.wirt == id }.forEach { add(it.id) }
+    }
+    val gebrauchtVon = t.verbindungen.filter { it.art == "depends" }.groupBy({ it.nach }, { it.von })
+    val zustand = t.dienste.associate { it.id to it.zustand }
+    val folgen = LinkedHashMap<String, MutableList<String>>()
+    for (u in aus) {
+        for (abh in erreichbar(u, gebrauchtVon)) {
+            if (abh in aus || zustand[abh] != "laeuft") continue
+            val liste = folgen.getOrPut(abh) { mutableListOf() }
+            if (u !in liste) liste += u
+        }
+    }
+    return Durchspiel(aus, folgen, istWirt)
+}
+
+/**
+ * Stand zu einem frueheren Zeitpunkt, gerechnet von mobile-api
+ * (/v1/ops/topologie/zeitpunkt) wie `zeitpunkt.ts` im Web. Linien zeigen
+ * weiter den heutigen Stand: Topologie-Schnappschuesse gibt es keine.
+ */
+@Serializable
+data class TopoZeitpunkt(
+    val vor: String = "",
+    val at: Double? = null,
+    /** Dienst-ID -> lief | ungesund | fehlte | startete | lief_nicht | unbekannt */
+    val zustaende: Map<String, String> = emptyMap(),
+    /** Wirt -> erreichbar | nicht_erreichbar; leer, wenn damals nicht gemessen */
+    val wirte: Map<String, String> = emptyMap(),
+    @SerialName("ohne_laufdaten") val ohneLaufdaten: List<String> = emptyList(),
+    val fehler: String? = null,
+) {
+    /** Damals ungesund oder gegen das Soll fehlend; ein schlafender Abruf-Dienst ist kein Befund. */
+    val auffaellig: List<String> get() = zustaende.filterValues { it == "ungesund" || it == "fehlte" }.keys.sorted()
+}
+
+/** Was die Zeitpunkt-Auswahl anbietet: Schluessel fuer mobile-api und Text. */
+val ZEITPUNKTE = linkedMapOf("1h" to "vor 1 Stunde", "1d" to "vor 1 Tag")
+
+val ZEIT_TEXT = mapOf(
+    "lief" to "lief",
+    "ungesund" to "ungesund",
+    "fehlte" to "fehlte gegen Soll",
+    "startete" to "startete gerade",
+    "lief_nicht" to "lief nicht",
+    "unbekannt" to "keine Daten",
+    "erreichbar" to "erreichbar",
+    "nicht_erreichbar" to "nicht erreichbar",
+)
+
+/**
+ * Netz-Ansicht wie der Graph in Obsidian (Web: Layout „Netz“): jeder Wirt und
+ * jeder Dienst ein Punkt, Dienste haengen an ihrem Wirt, Verbindungen ziehen
+ * zusaetzlich. Punktgroesse nach Zahl der Verbindungen.
+ */
+data class NetzLayout(
+    val breite: Float,
+    val hoehe: Float,
+    val punkte: Map<String, KartenPunkt>,
+    val radien: Map<String, Float>,
+    /** Welche Punkte Wirte sind (auch Wirte, die nur als `wirt` eines Dienstes vorkommen). */
+    val wirte: Set<String>,
+)
+
+/**
+ * Kraefte-Layout ohne Zufall: Wirte starten auf einem Kreis, ihre Dienste auf
+ * einem kleinen Kreis um sie, alles nach Kennung sortiert. Gleiche Daten ergeben
+ * damit bei jedem Oeffnen dasselbe Bild, ein Dienst steht immer an derselben
+ * Stelle. Danach Fruchterman-Reingold mit Abkuehlung und leichtem Zug zur Mitte.
+ * Ist das Ergebnis breiter als hoch, wird es gedreht: das Telefon ist hochkant.
+ */
+fun netzLayout(t: TopologieResponse, runden: Int = 260): NetzLayout {
+    val wirtIds = (t.wirte.map { it.id } + t.dienste.map { it.wirt }).distinct().sorted()
+    val wirtSet = wirtIds.toSet()
+    val dienste = t.dienste.filter { it.id !in wirtSet }.sortedBy { it.id }
+    val ids = wirtIds + dienste.map { it.id }
+    val index = ids.withIndex().associate { (i, id) -> id to i }
+    val n = ids.size
+    if (n == 0) return NetzLayout(RAND_NETZ * 2, RAND_NETZ * 2, emptyMap(), emptyMap(), emptySet())
+
+    // Kanten: Zugehoerigkeit zum Wirt (kurz) und echte Verbindungen (laenger).
+    data class Feder(val a: Int, val b: Int, val laenge: Float, val staerke: Float)
+    val federn = ArrayList<Feder>()
+    val grad = IntArray(n)
+    dienste.forEach { d ->
+        val a = index.getValue(d.id); val b = index.getValue(d.wirt)
+        federn += Feder(a, b, KANTE * 0.8f, 1f)
+    }
+    t.verbindungen.forEach { v ->
+        val a = index[v.von] ?: return@forEach
+        val b = index[v.nach] ?: return@forEach
+        if (a == b) return@forEach
+        grad[a]++; grad[b]++
+        federn += Feder(a, b, KANTE * 1.6f, 0.35f)
+    }
+
+    val x = FloatArray(n); val y = FloatArray(n)
+    val ring = KANTE * 2.2f * kotlin.math.sqrt(wirtIds.size.toFloat())
+    wirtIds.forEachIndexed { i, _ ->
+        val w = 2 * Math.PI * i / wirtIds.size
+        x[i] = (ring * kotlin.math.cos(w)).toFloat(); y[i] = (ring * kotlin.math.sin(w)).toFloat()
+    }
+    dienste.groupBy { it.wirt }.forEach { (wirt, liste) ->
+        val m = index.getValue(wirt)
+        liste.forEachIndexed { j, d ->
+            val w = 2 * Math.PI * j / liste.size
+            val r = KANTE * (0.6f + 0.15f * (j % 4))
+            val k = index.getValue(d.id)
+            x[k] = x[m] + (r * kotlin.math.cos(w)).toFloat(); y[k] = y[m] + (r * kotlin.math.sin(w)).toFloat()
+        }
+    }
+
+    val dx = FloatArray(n); val dy = FloatArray(n)
+    val abstossung = KANTE * KANTE
+    // Abstossung nur in der Naehe: ohne Grenze treiben Wirte ohne Verbindung
+    // weit hinaus und die Wolken schrumpfen auf dem Telefon zu Staub
+    // (Punktabstand im Mittel 5 dp statt 16 dp, nachgerechnet mit 280 Knoten).
+    val reichweite2 = (KANTE * 6f) * (KANTE * 6f)
+    var temperatur = KANTE * 2f
+    repeat(runden) {
+        java.util.Arrays.fill(dx, 0f); java.util.Arrays.fill(dy, 0f)
+        for (i in 0 until n) {
+            for (j in i + 1 until n) {
+                var ex = x[i] - x[j]; var ey = y[i] - y[j]
+                var d2 = ex * ex + ey * ey
+                if (d2 > reichweite2) continue
+                if (d2 < 0.01f) { ex = 0.1f * ((i - j) % 3); ey = 0.1f; d2 = 0.02f }
+                val f = abstossung / d2
+                dx[i] += ex * f; dy[i] += ey * f
+                dx[j] -= ex * f; dy[j] -= ey * f
+            }
+            // Zug zur Mitte haelt lose Inseln (Wirte ohne Dienste) beim Rest.
+            dx[i] -= x[i] * 0.08f; dy[i] -= y[i] * 0.08f
+        }
+        for (fe in federn) {
+            val ex = x[fe.a] - x[fe.b]; val ey = y[fe.a] - y[fe.b]
+            val d = kotlin.math.sqrt(ex * ex + ey * ey).coerceAtLeast(0.01f)
+            val f = (d - fe.laenge) / d * fe.staerke
+            dx[fe.a] -= ex * f; dy[fe.a] -= ey * f
+            dx[fe.b] += ex * f; dy[fe.b] += ey * f
+        }
+        for (i in 0 until n) {
+            val l = kotlin.math.sqrt(dx[i] * dx[i] + dy[i] * dy[i])
+            if (l > 0f) {
+                val schritt = minOf(l, temperatur)
+                x[i] += dx[i] / l * schritt; y[i] += dy[i] / l * schritt
+            }
+        }
+        temperatur = maxOf(temperatur * 0.975f, 0.5f)
+    }
+
+    // Hochkant drehen, dann in den positiven Bereich mit Rand schieben.
+    val breitRoh = (x.max() - x.min()) > (y.max() - y.min())
+    val px = if (breitRoh) y else x
+    val py = if (breitRoh) x else y
+    val minX = px.min(); val minY = py.min()
+    val radien = HashMap<String, Float>()
+    val punkte = HashMap<String, KartenPunkt>()
+    ids.forEachIndexed { i, id ->
+        punkte[id] = KartenPunkt(px[i] - minX + RAND_NETZ, py[i] - minY + RAND_NETZ)
+        val basis = if (id in wirtSet) 12f else 6f
+        radien[id] = minOf(22f, basis + kotlin.math.sqrt(grad[i].toFloat()) * 1.6f)
+    }
+    return NetzLayout(px.max() - minX + 2 * RAND_NETZ, py.max() - minY + 2 * RAND_NETZ, punkte, radien, wirtSet)
+}
+
+private const val KANTE = 30f
+private const val RAND_NETZ = 30f

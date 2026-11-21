@@ -19,6 +19,7 @@ import de.djouhri.tardis.ui.theme.StatusDown
 import de.djouhri.tardis.ui.theme.StatusIdle
 import de.djouhri.tardis.ui.theme.StatusUp
 import de.djouhri.tardis.ui.theme.StatusWarn
+import de.djouhri.tardis.ui.theme.glut
 
 /**
  * Ampelfarbe fuer einen Container.
@@ -45,11 +46,17 @@ fun usageColor(percent: Double?): Color = when {
     else -> StatusUp
 }
 
+/**
+ * Ampelpunkt. Ein roter Punkt (ausgefallen) bekommt einen atmenden Lichthof,
+ * damit er in einer langen Liste nicht neben den gruenen untergeht.
+ */
 @Composable
 fun StatusDot(color: Color, modifier: Modifier = Modifier) {
+    val rot = color == StatusDown
     Box(
         modifier = modifier
             .size(12.dp)
+            .then(if (rot) Modifier.glut(color) else Modifier)
             .clip(CircleShape)
             .background(color),
     )

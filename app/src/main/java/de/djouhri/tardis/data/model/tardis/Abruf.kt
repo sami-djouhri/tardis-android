@@ -23,6 +23,8 @@ data class Alarm(
     val bereich: String = "Sonstiges",
     /** ISO-8601 (UTC), seit wann der Alarm feuert. */
     val seit: String? = null,
+    /** Kurze Alarm-ID (z.B. A-7K2Q), dieselbe wie im ntfy-Titel und in Tardis-Web. */
+    @SerialName("kurz_id") val kurzId: String? = null,
 ) {
     val istKritisch: Boolean get() = schwere == "critical" || schwere == "page"
 }

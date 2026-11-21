@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.VerifiedUser
@@ -17,9 +18,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
+import de.djouhri.tardis.ui.theme.einblenden
+import de.djouhri.tardis.ui.theme.glitch
+import de.djouhri.tardis.ui.theme.glut
+import de.djouhri.tardis.ui.theme.rememberGlitch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -41,6 +49,16 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import de.djouhri.tardis.ui.abruf.AbrufScreen
+import de.djouhri.tardis.ui.backups.BackupsScreen
+import de.djouhri.tardis.ui.owner.OwnerScreen
+import de.djouhri.tardis.ui.sprache.SprachBlatt
+import de.djouhri.tardis.data.local.StandSpeicher
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.ViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import de.djouhri.tardis.ui.alarme.AlarmeScreen
 import de.djouhri.tardis.ui.alarme.AlarmeViewModel
 import de.djouhri.tardis.ui.inbox.InboxScreen
@@ -69,6 +87,14 @@ import kotlinx.serialization.Serializable
 @Serializable object TopologieRoute
 @Serializable object WirteRoute
 @Serializable object FreigabenRoute
+@Serializable object BackupsRoute
+@Serializable object OwnerRoute
+
+/** Reicht den Speicher-Zustand an das Band „Ohne Verbindung" (2.0.25). */
+@HiltViewModel
+class OfflineViewModel @Inject constructor(speicher: StandSpeicher) : ViewModel() {
+    val ausSpeicher = speicher.ausSpeicher
+}
 @Serializable data class ServiceDetailRoute(val host: String, val name: String)
 
 private data class TopLevelDest(
@@ -113,6 +139,9 @@ fun TardisMainScreen(
             delay(60_000)
         }
     }
+    val offline: OfflineViewModel = hiltViewModel()
+    val ausSpeicher by offline.ausSpeicher.collectAsState()
+    var sprachBlatt by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(oeffneFreigaben) {
         if (oeffneFreigaben > 0) navController.navigate(FreigabenRoute) { launchSingleTop = true }
     }
@@ -127,6 +156,8 @@ fun TardisMainScreen(
         currentDestination?.hasRoute(TopologieRoute::class) == true -> "Topologie"
         currentDestination?.hasRoute(WirteRoute::class) == true -> "Wirte"
         currentDestination?.hasRoute(FreigabenRoute::class) == true -> "Freigaben"
+        currentDestination?.hasRoute(BackupsRoute::class) == true -> "Sicherung"
+        currentDestination?.hasRoute(OwnerRoute::class) == true -> "Wartet auf dich"
         currentDestination?.hasRoute(ServiceDetailRoute::class) == true ->
             backStackEntry?.toRoute<ServiceDetailRoute>()?.name ?: "Dienst"
         currentDestination?.hierarchy?.any { it.hasRoute(ServicesRoute::class) } == true -> "Dienste"
@@ -136,9 +167,19 @@ fun TardisMainScreen(
         else -> "Tardis"
     }
 
+    // Glitch ueber dem Kopf, wenn waehrend des Ansehens ein Alarm NEU
+    // dazukommt (Kennung, die im letzten Stand fehlte). Nicht beim Oeffnen.
+    val alarmKennungen = alarme.antwort?.takeIf { it.erreichbar }?.alarme
+        ?.map { it.kurzId ?: "${it.name}@${it.instanz}" }?.toSet()
+    val kopfGlitch = rememberGlitch(alarmKennungen, ::kommtNeuerAlarmDazu)
+
     Scaffold(
+        // Durchsichtig, damit der Nebel des Themes durchscheint.
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                modifier = Modifier.glitch(kopfGlitch),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 title = { Text(title) },
                 navigationIcon = {
                     if (!isTopLevel) {
@@ -149,6 +190,9 @@ fun TardisMainScreen(
                 },
                 actions = {
                     if (isTopLevel) {
+                        IconButton(onClick = { sprachBlatt = true }) {
+                            Icon(Icons.Filled.Mic, contentDescription = "Mit host sprechen")
+                        }
                         val wartend = freigaben.antwort?.wartend?.size ?: 0
                         IconButton(onClick = {
                             navController.navigate(FreigabenRoute) { launchSingleTop = true }
@@ -205,6 +249,16 @@ fun TardisMainScreen(
                     onContainer = MaterialTheme.colorScheme.onTertiaryContainer,
                 )
             }
+            // Ein alter Stand ohne dieses Band saehe aus wie eine frische Messung.
+            ausSpeicher?.let { zeit ->
+                if (!demoActive) {
+                    TardisBanner(
+                        text = "Ohne Verbindung. Gespeicherter Stand von ${de.djouhri.tardis.ui.overview.uhrzeitOderTag(zeit)}",
+                        container = MaterialTheme.colorScheme.secondaryContainer,
+                        onContainer = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+            }
             if (sessionExpired && !demoActive) {
                 TardisBanner(
                     text = "Sitzung abgelaufen - bitte in den Einstellungen neu koppeln",
@@ -215,6 +269,8 @@ fun TardisMainScreen(
             NavHost(
                 navController = navController,
                 startDestination = OverviewRoute,
+                // Beim Seitenwechsel faehrt eine Abtastlinie in der Akzentfarbe nach unten.
+                modifier = Modifier.einblenden(currentDestination?.route, MaterialTheme.colorScheme.primary),
             ) {
                 composable<OverviewRoute> {
                     OverviewScreen(
@@ -233,6 +289,8 @@ fun TardisMainScreen(
                         onOpenVerfuegbarkeit = { navController.navigate(ReliabilityRoute) { launchSingleTop = true } },
                         onOpenTopologie = { navController.navigate(TopologieRoute) { launchSingleTop = true } },
                         onOpenWirte = { navController.navigate(WirteRoute) { launchSingleTop = true } },
+                        onOpenBackups = { navController.navigate(BackupsRoute) { launchSingleTop = true } },
+                        onOpenOwner = { navController.navigate(OwnerRoute) { launchSingleTop = true } },
                         onOpenAlarme = {
                             navController.navigate(AlarmeRoute) {
                                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -274,6 +332,12 @@ fun TardisMainScreen(
                 composable<WirteRoute> {
                     WirteScreen()
                 }
+                composable<BackupsRoute> {
+                    BackupsScreen()
+                }
+                composable<OwnerRoute> {
+                    OwnerScreen(onOpenFreigaben = { navController.navigate(FreigabenRoute) { launchSingleTop = true } })
+                }
                 composable<FreigabenRoute> {
                     FreigabenScreen(freigabenViewModel)
                 }
@@ -281,9 +345,21 @@ fun TardisMainScreen(
                     SettingsScreen(updateViewModel = updateViewModel)
                 }
             }
+            if (sprachBlatt) {
+                SprachBlatt(onSchliessen = { sprachBlatt = false })
+            }
         }
     }
 }
+
+/**
+ * Wahr, wenn [jetzt] eine Alarm-Kennung traegt, die in [vorher] fehlte. Ein
+ * Alarm, der endet, ist kein Anlass; ebenso wenig der Wechsel von „nicht
+ * erreichbar" (null) auf einen Stand, sonst glitcht jede wiederhergestellte
+ * Verbindung.
+ */
+internal fun kommtNeuerAlarmDazu(vorher: Any?, jetzt: Any?): Boolean =
+    vorher is Set<*> && jetzt is Set<*> && (jetzt - vorher).isNotEmpty()
 
 /**
  * Die untere Leiste, eigenstaendig, damit der Bildschirmfoto-Test sie ohne
@@ -303,9 +379,11 @@ internal fun TardisLeiste(
                     val zahl = if (dest.route == AlarmeRoute) alarme.anzahl ?: 0 else 0
                     if (zahl > 0) {
                         BadgedBox(badge = {
+                            val farbe = if (alarme.kritisch > 0) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.tertiary
                             Badge(
-                                containerColor = if (alarme.kritisch > 0) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.tertiary,
+                                containerColor = farbe,
+                                modifier = if (alarme.kritisch > 0) Modifier.glut(farbe, weite = 1.6f) else Modifier,
                             ) { Text(if (zahl > 99) "99+" else "$zahl") }
                         }) { Icon(dest.icon, contentDescription = "${dest.label}, $zahl aktiv") }
                     } else {
@@ -315,6 +393,13 @@ internal fun TardisLeiste(
                 label = { Text(dest.label, maxLines = 1) },
                 selected = aktiv(dest.route),
                 onClick = { onWahl(dest.route) },
+                // Der aktive Eintrag im Ton der Farbwahl; Materials Vorgabe
+                // (secondaryContainer) war auf der dunklen Leiste kaum zu sehen.
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                ),
             )
         }
     }

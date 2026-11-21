@@ -11,13 +11,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import de.djouhri.tardis.freigaben.FreigabeWaechter
 import de.djouhri.tardis.navigation.TardisMainScreen
+import de.djouhri.tardis.security.AppSperre
 import de.djouhri.tardis.ui.components.LoadingIndicator
 import de.djouhri.tardis.ui.pairing.PairingScreen
+import de.djouhri.tardis.ui.security.SperrBildschirm
+import de.djouhri.tardis.ui.theme.Aussehen
 import de.djouhri.tardis.ui.theme.HomelabTheme
 
 // FragmentActivity (statt ComponentActivity), damit BiometricPrompt die lokale
@@ -26,6 +30,19 @@ import de.djouhri.tardis.ui.theme.HomelabTheme
 class MainActivity : FragmentActivity() {
     /** Zaehlt hoch bei jedem Oeffnen ueber die Freigabe-Benachrichtigung (auch bei laufender App). */
     private val oeffneFreigaben = mutableIntStateOf(0)
+
+    /** Biometrie-Sperre (seit 2.0.24): bei jedem Start und nach 5 min im Hintergrund. */
+    private val gesperrt = mutableStateOf(AppSperre.prozess.gesperrt)
+
+    override fun onStart() {
+        super.onStart()
+        gesperrt.value = AppSperre.prozess.inDenVordergrund()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        AppSperre.prozess.inDenHintergrund()
+    }
 
     private fun ziel(intent: Intent?) {
         if (intent?.getStringExtra(FreigabeWaechter.EXTRA_ZIEL) == FreigabeWaechter.ZIEL_FREIGABEN) {
@@ -51,9 +68,18 @@ class MainActivity : FragmentActivity() {
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
+        // Vor dem ersten Bild: sonst blitzt vor der gewaehlten Farbe das Rot auf.
+        Aussehen.laden(this)
         setContent {
             HomelabTheme {
-                TardisRoot(oeffneFreigaben = oeffneFreigaben.intValue)
+                if (gesperrt.value) {
+                    SperrBildschirm(onEntsperrt = {
+                        AppSperre.prozess.entsperren()
+                        gesperrt.value = false
+                    })
+                } else {
+                    TardisRoot(oeffneFreigaben = oeffneFreigaben.intValue)
+                }
             }
         }
     }

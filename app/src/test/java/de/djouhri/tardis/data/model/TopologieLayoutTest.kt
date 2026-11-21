@@ -5,7 +5,10 @@ import de.djouhri.tardis.data.model.tardis.TopoDienst
 import de.djouhri.tardis.data.model.tardis.TopoWirt
 import de.djouhri.tardis.data.model.tardis.TopologieResponse
 import de.djouhri.tardis.data.model.tardis.auffaelligeDienste
+import de.djouhri.tardis.data.model.tardis.TopoVerbindung
+import de.djouhri.tardis.data.model.tardis.durchspielen
 import de.djouhri.tardis.data.model.tardis.kartenLayout
+import de.djouhri.tardis.data.model.tardis.netzLayout
 import de.djouhri.tardis.data.model.tardis.sucheDienste
 import de.djouhri.tardis.data.model.tardis.wirtKopf
 import org.junit.Assert.assertEquals
@@ -91,5 +94,78 @@ class TopologieLayoutTest {
         assertEquals(null, fremd.last)
         assertEquals(null, fremd.online)
         assertEquals(1, fremd.auffaellig)
+    }
+
+    @Test
+    fun netzIstGleichBeiJedemOeffnenUndVollstaendig() {
+        val a = netzLayout(echteGroesse)
+        val b = netzLayout(echteGroesse)
+        assertEquals("ohne Zufall: gleiche Daten, gleiche Punkte", a.punkte, b.punkte)
+        val alle = echteGroesse.wirte.map { it.id } + echteGroesse.dienste.map { it.id } + "geist"
+        assertEquals(alle.toSet(), a.punkte.keys)
+        assertTrue("geist kommt nur als wirt eines Dienstes vor und ist trotzdem ein Wirt", "geist" in a.wirte)
+        for ((id, p) in a.punkte) {
+            assertTrue("$id ausserhalb", p.x.isFinite() && p.y.isFinite() && p.x in 0f..a.breite && p.y in 0f..a.hoehe)
+        }
+        assertTrue("hochkant fuers Telefon", a.hoehe >= a.breite)
+    }
+
+    @Test
+    fun netzHaeltDiensteBeiIhremWirt() {
+        val n = netzLayout(echteGroesse)
+        fun abstand(x: String, y: String): Float {
+            val p = n.punkte.getValue(x); val q = n.punkte.getValue(y)
+            return kotlin.math.hypot(p.x - q.x, p.y - q.y)
+        }
+        // Im Mittel naeher am eigenen Wirt als am anderen grossen.
+        val host = echteGroesse.dienste.filter { it.wirt == "host" }
+        val eigen = host.map { abstand(it.id, "host") }.average()
+        val fremd = host.map { abstand(it.id, "node1") }.average()
+        assertTrue("eigen $eigen, fremd $fremd", eigen < fremd / 2)
+    }
+
+    @Test
+    fun netzPunktgroesseWaechstMitVerbindungen() {
+        val t = TopologieResponse(
+            wirte = listOf(TopoWirt("w")),
+            dienste = (1..5).map { TopoDienst("d$it", "d$it", "w") },
+            verbindungen = (2..5).map { TopoVerbindung("d$it", "d1", "depends") },
+        )
+        val n = netzLayout(t)
+        assertTrue(n.radien.getValue("d1") > n.radien.getValue("d2"))
+        assertTrue(n.radien.getValue("w") > n.radien.getValue("d1"))
+        assertEquals(0, netzLayout(TopologieResponse()).punkte.size)
+    }
+
+    @Test
+    fun durchspielenDienstUndWirtWieImWeb() {
+        val t = TopologieResponse(
+            wirte = listOf(TopoWirt("a"), TopoWirt("b")),
+            dienste = listOf(
+                TopoDienst("db", "db", "a"),
+                TopoDienst("api", "api", "b"),
+                TopoDienst("web", "web", "b"),
+                TopoDienst("cron", "cron", "b", zustand = "aus"),
+                TopoDienst("nachbar", "nachbar", "a"),
+            ).map { if (it.id == "cron") it else it.copy(zustand = "laeuft") },
+            verbindungen = listOf(
+                TopoVerbindung("api", "db", "depends"),
+                TopoVerbindung("web", "api", "depends"),
+                TopoVerbindung("cron", "api", "depends"),
+                TopoVerbindung("web", "db", "lan"),
+            ),
+        )
+        val d = durchspielen("db", t)
+        assertEquals(setOf("db"), d.aus)
+        assertFalse(d.istWirt)
+        // cron ist schon aus: kein neuer Schaden. Die LAN-Linie zaehlt nicht.
+        assertEquals(mapOf("api" to listOf("db"), "web" to listOf("db")), d.folgen)
+
+        val w = durchspielen("a", t)
+        assertTrue(w.istWirt)
+        assertEquals(setOf("a", "db", "nachbar"), w.aus)
+        assertEquals(setOf("api", "web"), w.folgen.keys)
+
+        assertTrue(durchspielen("web", t).folgen.isEmpty())
     }
 }

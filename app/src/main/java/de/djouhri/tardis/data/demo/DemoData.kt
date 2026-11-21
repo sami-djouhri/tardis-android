@@ -4,6 +4,12 @@ import de.djouhri.tardis.data.model.tardis.AbrufDienst
 import de.djouhri.tardis.data.model.tardis.AbrufResponse
 import de.djouhri.tardis.data.model.tardis.Alarm
 import de.djouhri.tardis.data.model.tardis.AlarmeResponse
+import de.djouhri.tardis.data.model.tardis.BackupProblem
+import de.djouhri.tardis.data.model.tardis.BackupWirt
+import de.djouhri.tardis.data.model.tardis.BackupsResponse
+import de.djouhri.tardis.data.model.tardis.OwnerSchritt
+import de.djouhri.tardis.data.model.tardis.OwnerSchritteResponse
+import de.djouhri.tardis.data.model.tardis.SpracheAntwort
 import de.djouhri.tardis.data.model.tardis.ContainerLauf
 import de.djouhri.tardis.data.model.tardis.DashboardSummary
 import de.djouhri.tardis.data.model.tardis.DienstDetail
@@ -32,6 +38,7 @@ import de.djouhri.tardis.data.model.tardis.Vorfall
 import de.djouhri.tardis.data.model.tardis.TopoDienst
 import de.djouhri.tardis.data.model.tardis.TopoVerbindung
 import de.djouhri.tardis.data.model.tardis.TopoWirt
+import de.djouhri.tardis.data.model.tardis.TopoZeitpunkt
 import de.djouhri.tardis.data.model.tardis.TopologieResponse
 import de.djouhri.tardis.data.model.tardis.WirtMessung
 import de.djouhri.tardis.data.model.tardis.WirtVerlauf
@@ -167,7 +174,13 @@ object DemoData {
             appendLine("2026-01-01T09:00:02Z INFO  Konfiguration geladen")
             appendLine("2026-01-01T09:00:03Z INFO  Lausche auf :8080")
             appendLine("2026-01-01T09:14:55Z WARN  Upstream langsam (312 ms)")
-            appendLine("2026-01-01T09:15:00Z INFO  Healthcheck ok")
+            repeat(4) { appendLine("2026-01-01T09:15:00Z INFO  Healthcheck ok") }
+            appendLine("2026-01-01T09:16:10Z ERROR Anfrage an /api/liste gescheitert")
+            appendLine("Traceback (most recent call last):")
+            appendLine("  File \"app/main.py\", line 42, in liste")
+            appendLine("ConnectionError: upstream nicht erreichbar")
+            appendLine("2026-01-01T09:16:11Z DEBUG Wiederholung in 5 s")
+            appendLine("2026-01-01T09:16:16Z INFO  Upstream wieder da")
         },
     )
 
@@ -286,6 +299,23 @@ object DemoData {
         )
     }
 
+    /** Vor einer Stunde lief app-5 noch, app-3 war ungesund; compute ohne Laufdaten. */
+    fun topologieZeitpunkt(vor: String) = TopoZeitpunkt(
+        vor = vor,
+        zustaende = topologie.dienste.associate { d ->
+            d.id to when {
+                d.wirt == "compute" -> "unbekannt"
+                d.id == "app-5" -> "lief"
+                d.id == "app-3" -> "ungesund"
+                d.id == "app-7" && vor == "1d" -> "fehlte"
+                d.zustand == "laeuft" -> "lief"
+                else -> "lief_nicht"
+            }
+        },
+        wirte = mapOf("app-node" to "erreichbar", "edge" to "erreichbar", "compute" to "erreichbar", "storage-box" to "nicht_erreichbar"),
+        ohneLaufdaten = listOf("compute"),
+    )
+
     val abruf = AbrufResponse(
         wecker = Wecker(
             erreichbar = true,
@@ -354,4 +384,66 @@ object DemoData {
             alarme = alarme.alarme.filter { it.instanz == host }.take(1),
         )
     }
+
+    /** Sicherung: ein Wirt veraltet, einer mit gescheiterter Probe, einer bewusst aus. */
+    val backups = BackupsResponse(
+        gemessen = true,
+        ok = false,
+        geprueftVorH = 1.2,
+        probleme = listOf(BackupProblem("laptop", "stale", "laptop: neuester Off-Site-Stand ist 400 h alt (> 336 h)")),
+        wirte = listOf(
+            BackupWirt("edge", ok = true, alterH = 14.0, grenzeH = 30.0, snapshots = 40, probeOk = true, probeAlterH = 30.0),
+            BackupWirt("app-node", ok = true, alterH = 15.5, grenzeH = 30.0, snapshots = 52, probeOk = false, probeAlterH = 250.0),
+            BackupWirt("compute", ok = true, alterH = 13.0, grenzeH = 30.0, snapshots = 21, probeOk = true, probeAlterH = 90.0),
+            BackupWirt("laptop", ok = false, alterH = 400.0, grenzeH = 336.0, probleme = listOf("Sicherung steht still")),
+            BackupWirt("media-box", bekanntAus = true),
+        ),
+        geheimnisseOk = true,
+        geheimnisseAlterH = 14.0,
+        ablageProzent = 17.0,
+        ablageFreiGb = 4100.0,
+        probenGemessen = true,
+    )
+
+    /** Handgriffe: einer verpasst, einer ohne Termin, einer zurueck mit rotem Befund, einer geplant, einer gemeldet. Datum relativ zu heute. */
+    val ownerSchritte: OwnerSchritteResponse
+        get() {
+            val heute = java.time.LocalDate.now()
+            return OwnerSchritteResponse(
+                gemessen = true,
+                standVorMin = 2,
+                schritte = listOf(
+                    OwnerSchritt(
+                        id = "demo-1", titel = "Router-Einstellungen",
+                        text = "DNS-Server 2 per DHCP verteilen, danach den Abgleich starten.",
+                        befehle = listOf("bash ~/demo/abgleich.sh --anwenden"),
+                    ),
+                    OwnerSchritt(
+                        id = "demo-2", titel = "Laptop-Update", text = "Systemupdate im Terminal.",
+                        tag = heute.plusDays(3).toString(),
+                    ),
+                    OwnerSchritt(
+                        id = "demo-3", titel = "Sicherung nachholen", text = "Einmal anstossen.",
+                        wartet = "Owner meldet gemacht (17.11. 20:10), Gegenprobe steht aus",
+                        gegenprobe = de.djouhri.tardis.data.model.tardis.Gegenprobe(auto = true),
+                    ),
+                    OwnerSchritt(
+                        id = "demo-4", titel = "Telefon einrichten", text = "Freigaben aus der Notiz setzen.",
+                        tag = heute.minusDays(2).toString(),
+                    ),
+                    OwnerSchritt(
+                        id = "demo-5", titel = "Demo-Dienst starten", text = "Tresor öffnen und starten.",
+                        gegenprobe = de.djouhri.tardis.data.model.tardis.Gegenprobe(
+                            auto = true, zustand = "rot", befund = "Container demo: exited",
+                        ),
+                    ),
+                ),
+            )
+        }
+
+    /** Antwort des Sprach-host ohne Ton: im Demo-Modus geht nichts an den Router. */
+    val sprache = SpracheAntwort(
+        erkannt = "Wie spät ist es?",
+        antwort = "Demo: hier antwortet host, im echten Betrieb auch mit Stimme.",
+    )
 }

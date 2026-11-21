@@ -19,7 +19,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
+import de.djouhri.tardis.ui.components.Card
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -51,6 +54,7 @@ import de.djouhri.tardis.ui.theme.StatusDown
 import de.djouhri.tardis.ui.theme.StatusIdle
 import de.djouhri.tardis.ui.theme.StatusUp
 import de.djouhri.tardis.ui.theme.StatusWarn
+import de.djouhri.tardis.ui.theme.TextLeise
 import de.djouhri.tardis.util.seitText
 import de.djouhri.tardis.util.userMessage
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,6 +62,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import java.time.Duration
+import java.time.LocalDateTime
 
 data class InboxUiState(
     val loading: Boolean = true,
@@ -66,6 +86,8 @@ data class InboxUiState(
     val items: List<InboxItem> = emptyList(),
     val counts: InboxCounts = InboxCounts(),
     val message: String? = null,
+    /** Letzte Triage fuer „Rückgängig": externe ID und was getan wurde. */
+    val letzte: Pair<String, String>? = null,
     /**
      * „Verlauf“ zeigt statt der offenen Eintraege die Zeitleiste aller
      * Ereignisse (`/v1/stream`). Ein Umschalter in diesem Bereich statt eines
@@ -159,13 +181,28 @@ class InboxViewModel @Inject constructor(
             inboxRepository.action(externalId, action, snoozeMinutes).fold(
                 onSuccess = {
                     // Optimistisch aus der Liste nehmen, dann neu laden.
-                    _state.update { s -> s.copy(items = s.items.filterNot { it.externalId == externalId }) }
+                    val text = triageText(action, snoozeMinutes)
+                    _state.update { s ->
+                        s.copy(
+                            items = s.items.filterNot { it.externalId == externalId },
+                            letzte = if (action == "reopen") null else externalId to text,
+                            message = if (action == "reopen") "Wieder offen" else null,
+                        )
+                    }
                     load(refresh = true)
                 },
                 onFailure = { error -> _state.update { it.copy(error = error.userMessage()) } },
             )
         }
     }
+
+    /** Holt den zuletzt triagierten Eintrag zurueck (Aktion `reopen`). */
+    fun rueckgaengig() {
+        val (id, _) = _state.value.letzte ?: return
+        action(id, "reopen")
+    }
+
+    fun meldungGesehen() = _state.update { it.copy(message = null, letzte = null) }
 
     fun createNote(title: String, content: String) {
         if (title.isBlank()) return
@@ -185,7 +222,19 @@ fun InboxScreen(viewModel: InboxViewModel = hiltViewModel()) {
     LaunchedEffect(Unit) { viewModel.load() }
 
     var showNoteDialog by remember { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(state.letzte, state.message) {
+        val letzte = state.letzte
+        val text = letzte?.second ?: state.message ?: return@LaunchedEffect
+        val r = snackbar.showSnackbar(
+            text,
+            actionLabel = if (letzte != null) "Rückgängig" else null,
+            duration = SnackbarDuration.Short,
+        )
+        if (r == SnackbarResult.ActionPerformed) viewModel.rueckgaengig() else viewModel.meldungGesehen()
+    }
 
+    Box(Modifier.fillMaxSize()) {
     PullToRefreshBox(
         isRefreshing = if (state.zeigeVerlauf) state.verlaufLaedt else state.refreshing,
         onRefresh = { if (state.zeigeVerlauf) viewModel.ladeVerlauf() else viewModel.load(refresh = true) },
@@ -223,12 +272,11 @@ fun InboxScreen(viewModel: InboxViewModel = hiltViewModel()) {
                             "${state.counts.open} offen · ${state.counts.snoozed} zurückgestellt",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
                         )
-                        Spacer(Modifier.weight(1f))
-                        TextButton(onClick = { viewModel.zeigeVerlauf(true) }) { Text("Verlauf") }
-                        TextButton(onClick = { showNoteDialog = true }) {
-                            Icon(Icons.Filled.Add, contentDescription = null)
-                            Text(" Notiz")
+                        TextButton(onClick = { viewModel.zeigeVerlauf(true) }) { Text("Verlauf", maxLines = 1) }
+                        IconButton(onClick = { showNoteDialog = true }) {
+                            Icon(Icons.Filled.Add, contentDescription = "Neue Notiz", tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -245,12 +293,15 @@ fun InboxScreen(viewModel: InboxViewModel = hiltViewModel()) {
                     InboxCard(
                         item = item,
                         onDone = { viewModel.action(item.externalId, "done") },
-                        onSnooze = { viewModel.action(item.externalId, "snooze", snoozeMinutes = 180) },
+                        onSnooze = { min -> viewModel.action(item.externalId, "snooze", snoozeMinutes = min) },
                         onArchive = { viewModel.action(item.externalId, "archive") },
                     )
                 }
             }
         }
+    }
+
+    SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(8.dp))
     }
 
     if (showNoteDialog) {
@@ -276,9 +327,13 @@ private fun severityColor(severity: String) = when (severity.lowercase()) {
 private fun InboxCard(
     item: InboxItem,
     onDone: () -> Unit,
-    onSnooze: () -> Unit,
+    onSnooze: (Int) -> Unit,
     onArchive: () -> Unit,
 ) {
+    val uri = LocalUriHandler.current
+    var spaeter by remember { mutableStateOf(false) }
+    val links = oeffenbareLinks(item)
+    var auswahl by remember { mutableStateOf(false) }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -289,6 +344,18 @@ private fun InboxCard(
                 )
                 Spacer(Modifier.width(8.dp))
                 StatusPill(text = item.source, color = severityColor(item.severity))
+            }
+            quellenZeile(item)?.let {
+                Spacer(Modifier.height(2.dp))
+                Text(it, style = MaterialTheme.typography.labelSmall, color = TextLeise)
+            }
+            item.bezug?.let {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (bezugTrifft(it)) StatusWarn else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             item.detail?.takeIf { it.isNotBlank() }?.let {
                 Spacer(Modifier.height(4.dp))
@@ -308,13 +375,86 @@ private fun InboxCard(
                 )
             }
             Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(onClick = onDone) { Text("Erledigt") }
-                TextButton(onClick = onSnooze) { Text("Später") }
-                TextButton(onClick = onArchive) { Text("Archiv") }
+            // Seit 2.0.31: Erledigt als Hauptknopf, Später mit Wahl der Dauer,
+            // Archiv und Quelle als Symbole rechts. Vorher vier gleich blasse
+            // Textknöpfe, und Später stellte immer fest 3 h zurück.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FilledTonalButton(onClick = onDone, contentPadding = KNOPF_INNEN) {
+                    Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Erledigt")
+                }
+                Box {
+                    OutlinedButton(onClick = { spaeter = true }, contentPadding = KNOPF_INNEN) {
+                        Icon(Icons.Filled.Schedule, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Später")
+                    }
+                    DropdownMenu(expanded = spaeter, onDismissRequest = { spaeter = false }) {
+                        spaeterWahl().forEach { (text, min) ->
+                            DropdownMenuItem(text = { Text(text) }, onClick = { spaeter = false; onSnooze(min) })
+                        }
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                if (links.isNotEmpty()) {
+                    Box {
+                        IconButton(onClick = {
+                            if (links.size == 1) runCatching { uri.openUri(links.first().url) } else auswahl = true
+                        }) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = if (links.size > 1) "Quellen öffnen (${links.size})" else "Quelle öffnen",
+                            )
+                        }
+                        DropdownMenu(expanded = auswahl, onDismissRequest = { auswahl = false }) {
+                            links.forEach { l ->
+                                DropdownMenuItem(
+                                    text = { Text(l.quelle ?: l.url) },
+                                    onClick = { auswahl = false; runCatching { uri.openUri(l.url) } },
+                                )
+                            }
+                        }
+                    }
+                }
+                IconButton(onClick = onArchive) {
+                    Icon(Icons.Filled.Archive, contentDescription = "Archivieren", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     }
+}
+
+private val KNOPF_INNEN = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+
+/** Die Wahl unter „Später": Text und Minuten, „morgen früh" ist 8 Uhr am naechsten Tag. */
+internal fun spaeterWahl(jetzt: LocalDateTime = LocalDateTime.now()): List<Pair<String, Int>> = listOf(
+    "In 1 Stunde" to 60,
+    "In 3 Stunden" to 180,
+    "Morgen früh" to minutenBisMorgenFrueh(jetzt),
+    "In einer Woche" to 7 * 24 * 60,
+)
+
+internal fun minutenBisMorgenFrueh(jetzt: LocalDateTime): Int {
+    val ziel = jetzt.toLocalDate().plusDays(1).atTime(8, 0)
+    return Duration.between(jetzt, ziel).toMinutes().toInt().coerceIn(1, 10080)
+}
+
+/** Text der Rueckmeldung nach einer Triage. */
+internal fun triageText(action: String, snoozeMinutes: Int?): String = when (action) {
+    "done" -> "Erledigt"
+    "archive" -> "Archiviert"
+    "snooze" -> when {
+        snoozeMinutes == null -> "Zurückgestellt"
+        snoozeMinutes < 120 -> "Zurückgestellt für $snoozeMinutes min"
+        snoozeMinutes < 24 * 60 -> "Zurückgestellt für ${snoozeMinutes / 60} h"
+        else -> ((snoozeMinutes + 720) / (24 * 60)).let { "Zurückgestellt für $it ${if (it == 1) "Tag" else "Tage"}" }
+    }
+    else -> "Gespeichert"
 }
 
 @Composable

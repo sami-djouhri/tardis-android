@@ -1,1 +1,1 @@
-Quelle: @fontsource/inter 5.3.0, Teilmenge latin, WOFF verlustfrei nach TTF entpackt. Lizenz OFL-1.1.
+Quelle: @fontsource/inter 5.3.0 und @fontsource/jetbrains-mono 5.3.0 (seit 2.0.23, Terminal-Stil), Teilmenge latin, WOFF verlustfrei nach TTF entpackt. Lizenz OFL-1.1.

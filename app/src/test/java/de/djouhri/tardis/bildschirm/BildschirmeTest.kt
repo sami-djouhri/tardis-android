@@ -1,5 +1,15 @@
 package de.djouhri.tardis.bildschirm
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import de.djouhri.tardis.ui.settings.AussehenKarte
 import android.os.Looper
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +36,7 @@ import de.djouhri.tardis.data.repository.InboxRepository
 import de.djouhri.tardis.data.repository.OpsRepository
 import de.djouhri.tardis.navigation.AlarmeRoute
 import de.djouhri.tardis.navigation.TardisLeiste
+import de.djouhri.tardis.ui.tresore.NotknopfViewModel
 import de.djouhri.tardis.ui.reliability.ReliabilityScreen
 import de.djouhri.tardis.ui.topologie.TopologieScreen
 import de.djouhri.tardis.ui.topologie.TopologieViewModel
@@ -49,6 +60,10 @@ import de.djouhri.tardis.ui.services.ServiceDetailViewModel
 import de.djouhri.tardis.ui.services.ServicesScreen
 import de.djouhri.tardis.ui.services.ServicesViewModel
 import de.djouhri.tardis.ui.theme.HomelabTheme
+import de.djouhri.tardis.ui.backups.BackupsInhalt
+import de.djouhri.tardis.ui.owner.OwnerInhalt
+import de.djouhri.tardis.ui.sprache.SprachInhalt
+import de.djouhri.tardis.ui.sprache.SprachUiState
 import de.djouhri.tardis.widget.WidgetSpeicher
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Rule
@@ -98,13 +113,18 @@ class BildschirmeTest {
     private val ops = OpsRepository(nieGerufen(OpsApi::class.java), demo)
     private val widget = WidgetSpeicher(ApplicationProvider.getApplicationContext(), demo)
 
-    private fun bild(name: String, schrift: Float = 1f, inhalt: @Composable () -> Unit) {
+    private fun bild(
+        name: String,
+        schrift: Float = 1f,
+        inhalt: @Composable () -> Unit,
+    ) {
         compose.mainClock.autoAdvance = false
         compose.setContent {
             val d = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(d.density, schrift)) {
-                HomelabTheme {
-                    Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
+                HomelabTheme(effekte = true) {
+                    // Durchsichtig wie das Scaffold der App: der Nebel des Themes liegt darunter.
+                    Surface(color = Color.Transparent, modifier = Modifier.fillMaxSize()) {
                         inhalt()
                     }
                 }
@@ -133,7 +153,19 @@ class BildschirmeTest {
                 DashboardRepository(nieGerufen(DashboardApi::class.java), nieGerufen(VersionApi::class.java), demo),
                 widget,
             ),
+            notknopf = NotknopfViewModel(ops),
         )
+    }
+
+    private val uebersichtVm get() = OverviewViewModel(
+        ops,
+        DashboardRepository(nieGerufen(DashboardApi::class.java), nieGerufen(VersionApi::class.java), demo),
+        widget,
+    )
+
+    @Test
+    fun aussehen() = bild("31-aussehen") {
+        Column(Modifier.padding(16.dp)) { AussehenKarte() }
     }
 
     @Test
@@ -209,11 +241,30 @@ class BildschirmeTest {
     @Test
     fun freigaben() = bild("20-freigaben") {
         FreigabenInhalt(
-            state = FreigabenUiState(loading = false, antwort = FreigabenRepository.DEMO, fingerabdruck = "0".repeat(64)),
+            state = FreigabenUiState(
+                loading = false, antwort = FreigabenRepository.DEMO, fingerabdruck = "0".repeat(64),
+                befehle = FreigabenRepository.DEMO_BEFEHLE,
+            ),
             geraeteschutz = true,
             onFreigeben = {},
             onSchluessel = {},
             onNeu = {},
+        )
+    }
+
+    @Test
+    fun sicherung() = bild("21-sicherung") { BackupsInhalt(DemoData.backups) }
+
+    @Test
+    fun owner() = bild("22-owner") {
+        OwnerInhalt(DemoData.ownerSchritte, hinweis = null, onGemacht = {}, onHinweisGelesen = {})
+    }
+
+    @Test
+    fun sprache() = bild("23-sprache") {
+        SprachInhalt(
+            SprachUiState(erkannt = DemoData.sprache.erkannt, antwort = DemoData.sprache.antwort),
+            onStart = {}, onStopp = {}, onStill = {},
         )
     }
 }

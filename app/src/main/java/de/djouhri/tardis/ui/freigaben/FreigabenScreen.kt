@@ -21,7 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import de.djouhri.tardis.ui.components.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -62,6 +62,7 @@ import de.djouhri.tardis.ui.theme.StatusDown
 import de.djouhri.tardis.ui.theme.StatusUp
 import de.djouhri.tardis.ui.theme.StatusWarn
 import de.djouhri.tardis.ui.theme.TextLeise
+import de.djouhri.tardis.util.uhrzeitAus
 import de.djouhri.tardis.util.userMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -69,12 +70,20 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.security.Signature
 import javax.inject.Inject
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.CompositionLocalProvider
+import de.djouhri.tardis.data.model.tardis.Befehl
+import de.djouhri.tardis.data.model.tardis.BefehlUnterschrift
+import de.djouhri.tardis.data.model.tardis.BefehleAntwort
+import kotlinx.coroutines.delay
 
 data class FreigabenUiState(
     val loading: Boolean = true,
     val refreshing: Boolean = false,
     val error: String? = null,
     val antwort: FreigabenAntwort? = null,
+    /** Befehls-Freigabe (seit 2.0.31); `null` = nicht geladen oder Gateway kennt sie nicht. */
+    val befehle: BefehleAntwort? = null,
     /** Fingerabdruck des eigenen Freigabeschluessels, `null` = noch keiner erzeugt. */
     val fingerabdruck: String? = null,
     val beschaeftigt: String? = null,
@@ -105,7 +114,13 @@ class FreigabenViewModel @Inject constructor(
                 },
                 onFailure = { e -> _state.update { it.copy(loading = false, refreshing = false, error = e.userMessage()) } },
             )
+            repository.befehle().onSuccess { b -> _state.update { it.copy(befehle = b) } }
         }
+    }
+
+    /** Still nachladen, solange ein Befehl wartet oder laeuft: das Ergebnis kommt nach Sekunden. */
+    fun befehleNachladen() {
+        viewModelScope.launch { repository.befehle().onSuccess { b -> _state.update { it.copy(befehle = b) } } }
     }
 
     private fun melde(text: String, fehler: Boolean = false) =
@@ -168,6 +183,26 @@ class FreigabenViewModel @Inject constructor(
         }
     }
 
+    /** Befehl: mit der bestaetigten Signature den sha256 des gezeigten Skripttexts unterschreiben. */
+    fun befehlFreigeben(b: Befehl, bestaetigt: Signature) {
+        val fp = _state.value.fingerabdruck ?: return
+        viewModelScope.launch {
+            _state.update { it.copy(beschaeftigt = "befehl:${b.id}", meldung = null) }
+            val ausgestellt = System.currentTimeMillis() / 1000
+            val sig = runCatching {
+                schluessel.unterschreiben(bestaetigt, FreigabeSchluessel.befehlNachricht(b.id, b.sha256, ausgestellt))
+            }.getOrElse { e ->
+                melde("Unterschrift gescheitert: ${e.message}", fehler = true)
+                return@launch
+            }
+            repository.befehlFreigeben(b, BefehlUnterschrift(b.sha256, ausgestellt, fp, sig)).fold(
+                onSuccess = { melde("${b.titel}: freigegeben, host führt es gleich aus.") },
+                onFailure = { e -> melde("${b.titel}: ${e.userMessage()}", fehler = true) },
+            )
+            befehleNachladen()
+        }
+    }
+
     fun meldungWeg() = _state.update { it.copy(meldung = null) }
 }
 
@@ -217,6 +252,26 @@ fun FreigabenScreen(viewModel: FreigabenViewModel = hiltViewModel()) {
         )
     }
 
+    val befehlFreigeben: (Befehl) -> Unit = freigeben@{ b ->
+        if (deviceAuth == null || !deviceAuth.canAuthenticate()) return@freigeben
+        val sig = viewModel.vorbereiten() ?: return@freigeben
+        deviceAuth.unterschreiben(
+            title = "Als root auf host ausführen",
+            subtitle = "${b.titel} · ${b.sha256.take(12)}",
+            signature = sig,
+            onSuccess = { viewModel.befehlFreigeben(b, it) },
+            onFailed = { },
+        )
+    }
+
+    val laeuftNoch = state.befehle?.befehle?.any { it.wartet || it.ergebnis?.zustand == "laeuft" } == true
+    LaunchedEffect(laeuftNoch) {
+        while (laeuftNoch) {
+            delay(4_000)
+            viewModel.befehleNachladen()
+        }
+    }
+
     PullToRefreshBox(
         isRefreshing = state.refreshing,
         onRefresh = { viewModel.load(refresh = true) },
@@ -226,6 +281,7 @@ fun FreigabenScreen(viewModel: FreigabenViewModel = hiltViewModel()) {
             state = state,
             geraeteschutz = deviceAuth?.canAuthenticate() == true,
             onFreigeben = freigeben,
+            onBefehl = befehlFreigeben,
             onSchluessel = { neu -> viewModel.schluesselEinrichten(neu) },
             onNeu = { viewModel.load() },
         )
@@ -240,7 +296,10 @@ internal fun FreigabenInhalt(
     onFreigeben: (WartendeFreigabe) -> Unit,
     onSchluessel: (Boolean) -> Unit,
     onNeu: () -> Unit,
+    onBefehl: (Befehl) -> Unit = {},
 ) {
+    // Ohne eigene Flaeche erbten Ueberschriften die Vorgabe-Schriftfarbe (schwarz auf dunklem Grund).
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -278,6 +337,16 @@ internal fun FreigabenInhalt(
                     onFreigeben = { onFreigeben(w) },
                 )
             }
+        }
+        state.befehle?.let { b ->
+            BefehleAbschnitt(
+                b,
+                aktiv = state.schluesselGemeldet && geraeteschutz && state.beschaeftigt == null,
+                beschaeftigt = state.beschaeftigt?.removePrefix("befehl:"),
+                onBefehl = onBefehl,
+            )
+        }
+        if (a != null && a.konfiguriert) {
             if (a.stand.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
                 Text("Stand je Ziel", style = MaterialTheme.typography.titleMedium)
@@ -287,6 +356,7 @@ internal fun FreigabenInhalt(
         }
         Spacer(Modifier.height(4.dp))
         SchluesselKarte(state, onSchluessel)
+    }
     }
 }
 
@@ -338,6 +408,103 @@ private fun WartendKarte(w: WartendeFreigabe, aktiv: Boolean, beschaeftigt: Bool
                 }
             }
         }
+    }
+}
+
+/**
+ * Befehle (seit 2.0.31): Owner-Skripte, die nach deiner Unterschrift als root
+ * auf host laufen. Freigeben geht erst, wenn das ganze Skript einmal offen
+ * war: unterschrieben wird genau dieser Text.
+ */
+@Composable
+private fun BefehleAbschnitt(b: BefehleAntwort, aktiv: Boolean, beschaeftigt: String?, onBefehl: (Befehl) -> Unit) {
+    if (b.befehle.isEmpty() && b.eingerichtet) return
+    Spacer(Modifier.height(4.dp))
+    val offen = b.befehle.count { it.offen }
+    Text(if (offen > 0) "Befehle ($offen offen)" else "Befehle", style = MaterialTheme.typography.titleMedium)
+    Text(
+        "Fertige Handgriffe als Skript. Nach deiner Unterschrift führt host es als root aus, ohne Terminal, höchstens 30 min.",
+        style = MaterialTheme.typography.bodySmall, color = TextLeise,
+    )
+    if (!b.eingerichtet) {
+        Text(
+            "Der Läufer auf host ist noch nicht eingerichtet. Einmal im Terminal: sudo bash interne Notiz",
+            color = StatusWarn, style = MaterialTheme.typography.bodySmall,
+        )
+    }
+    b.befehle.sortedByDescending { it.offen }.forEach { befehl ->
+        BefehlKarte(befehl, aktiv = aktiv && b.eingerichtet, beschaeftigt = beschaeftigt == befehl.id, onFreigeben = { onBefehl(befehl) })
+    }
+}
+
+@Composable
+private fun BefehlKarte(b: Befehl, aktiv: Boolean, beschaeftigt: Boolean, onFreigeben: () -> Unit) {
+    var skriptOffen by remember { mutableStateOf(false) }
+    var gesehen by remember(b.sha256) { mutableStateOf(false) }
+    var ausgabeOffen by remember { mutableStateOf(false) }
+    val e = b.ergebnis
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(b.titel, fontWeight = FontWeight.SemiBold)
+            b.warum?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+            b.rueckweg?.let { Text("Rückweg: $it", style = MaterialTheme.typography.bodySmall, color = TextLeise) }
+            val (zustand, farbe) = befehlZustand(b)
+            Text(zustand, color = farbe, style = MaterialTheme.typography.bodySmall)
+            e?.grund?.let { Text(it, color = StatusDown, style = MaterialTheme.typography.bodySmall) }
+            Text("sha256 ${b.sha256.take(16)}…", fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = TextLeise)
+            if (skriptOffen) {
+                Text(
+                    b.inhalt,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp,
+                    softWrap = false,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(8.dp)
+                        .horizontalScroll(rememberScrollState()),
+                )
+            }
+            if (ausgabeOffen && e != null && e.ausgabe.isNotBlank()) {
+                Text(
+                    e.ausgabe,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp,
+                    softWrap = false,
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(onClick = { skriptOffen = !skriptOffen; gesehen = true }) {
+                    Text(if (skriptOffen) "Skript zu" else "Skript (${b.inhalt.lines().size} Z.)", maxLines = 1)
+                }
+                if (e != null && e.ausgabe.isNotBlank()) {
+                    OutlinedButton(onClick = { ausgabeOffen = !ausgabeOffen }) {
+                        Text(if (ausgabeOffen) "Ausgabe zu" else "Ausgabe", maxLines = 1)
+                    }
+                }
+            }
+            if (b.offen) {
+                Button(onClick = onFreigeben, enabled = aktiv && gesehen) {
+                    if (beschaeftigt) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                    else Text(if (gesehen) "Als root ausführen" else "Erst das Skript ansehen")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun befehlZustand(b: Befehl): Pair<String, Color> {
+    val e = b.ergebnis
+    return when {
+        b.wartet -> "Freigegeben, wartet auf den Läufer" to StatusWarn
+        e == null -> "Noch nicht gelaufen" to TextLeise
+        e.zustand == "laeuft" -> "Läuft gerade" to StatusWarn
+        e.veraltet -> "Skript seit dem letzten Lauf geändert" to StatusWarn
+        e.zustand == "ok" -> "Gelaufen${e.ende?.let { uhrzeitAus(java.time.Instant.ofEpochSecond(it).toString())?.let { t -> " um $t" } } ?: ""}, Exit 0" to StatusUp
+        e.zustand == "abgelehnt" -> "Vom Läufer abgelehnt" to StatusDown
+        else -> "Gescheitert, Exit ${e.rc ?: "?"}" to StatusDown
     }
 }
 

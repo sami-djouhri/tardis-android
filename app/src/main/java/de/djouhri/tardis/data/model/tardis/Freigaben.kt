@@ -61,3 +61,52 @@ data class SchluesselGemeldet(val fingerabdruck: String, val neu: Boolean)
 
 @Serializable
 data class FreigabeErgebnis(val freigegeben: Boolean = false, val neu: Boolean = false)
+
+/**
+ * Befehls-Freigabe (seit 2.0.31, `GET /v1/befehle`): Owner-Skripte, die der
+ * root-Laeufer auf host nach deiner Unterschrift ausfuehrt. Unterschrieben
+ * wird der sha256 des ganzen Skripttexts, den die App vorher zeigt.
+ */
+@Serializable
+data class BefehleAntwort(
+    /** false: auf host laeuft noch kein Laeufer, der den Eingang abnimmt. */
+    val eingerichtet: Boolean = false,
+    val befehle: List<Befehl> = emptyList(),
+)
+
+@Serializable
+data class Befehl(
+    val id: String,
+    val titel: String,
+    val warum: String? = null,
+    val rueckweg: String? = null,
+    /** Aufgaben-ID des Handgriffs, zu dem das Skript gehoert. */
+    val schritt: String? = null,
+    val sha256: String,
+    val inhalt: String,
+    /** Freigegeben, der Laeufer hat die Anfrage noch nicht abgeholt. */
+    val wartet: Boolean = false,
+    val ergebnis: BefehlErgebnis? = null,
+) {
+    /** Braucht eine Freigabe: noch nie gelaufen, gescheitert, abgelehnt oder seither geaendert. */
+    val offen: Boolean
+        get() = !wartet && ergebnis?.zustand != "laeuft" &&
+            (ergebnis == null || ergebnis.veraltet || ergebnis.zustand != "ok")
+}
+
+@Serializable
+data class BefehlErgebnis(
+    /** laeuft, ok, fehler, abgelehnt */
+    val zustand: String,
+    val rc: Int? = null,
+    val grund: String? = null,
+    val ausgabe: String = "",
+    val ende: Long? = null,
+    val veraltet: Boolean = false,
+)
+
+@Serializable
+data class BefehlUnterschrift(val sha256: String, val ausgestellt: Long, val schluessel: String, val signatur: String)
+
+@Serializable
+data class BefehlAngenommen(val angenommen: Boolean = false)

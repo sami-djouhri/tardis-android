@@ -1,12 +1,17 @@
 package de.djouhri.tardis.ui.theme
 
 import android.os.Build
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 
 private val LightColorScheme = lightColorScheme(
@@ -41,10 +46,11 @@ private val LightColorScheme = lightColorScheme(
     outlineVariant = BorderLight,
 )
 
-private val DarkColorScheme = darkColorScheme(
-    primary = TextPrimaryDark,
-    onPrimary = BgDark,
-    primaryContainer = SurfaceHoverDark,
+internal val dunklesSchemaBlau = darkColorScheme(
+    // Seit 2.0.31 Blau (Owner 2026-11-21), die Werte stehen in Color.kt.
+    primary = AccentDark,
+    onPrimary = AccentForegroundDark,
+    primaryContainer = AccentSoftDark,
     onPrimaryContainer = TextPrimaryDark,
     secondary = TextSecondaryDark,
     onSecondary = BgDark,
@@ -67,8 +73,17 @@ private val DarkColorScheme = darkColorScheme(
     // Material: `outline` ist der kraeftige Rand (Schalter aus, OutlinedButton),
     // `outlineVariant` der zarte (Trenner). Bis 2.0.11 vertauscht: ein
     // ausgeschalteter Schalter war auf der Flaeche kaum zu sehen.
-    outline = BorderStrongDark,
+    outline = TextDimDark,
     outlineVariant = BorderDark,
+    surfaceContainerLowest = SurfaceSunkenDark,
+    surfaceContainerLow = BgDark,
+    surfaceContainer = SurfaceDarkFlaeche,
+    surfaceContainerHigh = SurfaceHoverDark,
+    surfaceContainerHighest = SurfaceHoverDark,
+    surfaceBright = SurfaceHoverDark,
+    surfaceDim = SurfaceSunkenDark,
+    inverseSurface = TextPrimaryDark,
+    inverseOnSurface = BgDark,
 )
 
 /**
@@ -88,20 +103,37 @@ private val DarkColorScheme = darkColorScheme(
 fun HomelabTheme(
     darkTheme: Boolean = true,
     dynamicColor: Boolean = false,
+    effekte: Boolean = Aussehen.effekte,
     content: @Composable () -> Unit
 ) {
+    val ton = TardisTon.BLAU
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> DarkColorScheme
+        darkTheme -> dunklesSchemaBlau
         else -> LightColorScheme
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    val typographie = remember(darkTheme) { if (darkTheme) terminalTypography(ton.akzent) else Typography }
+    CompositionLocalProvider(LocalTardisTon provides ton, LocalTardisEffekte provides effekte) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = typographie,
+            shapes = if (darkTheme) TerminalShapes else MaterialTheme.shapes,
+        ) {
+            if (darkTheme) {
+                // Von hinten nach vorn: Grund mit Nebel, Inhalt, Korn, Scanlines.
+                // Wer darueber eine deckende Flaeche in der Grundfarbe legt
+                // (Scaffold, Surface mit `background`), verdeckt den Nebel.
+                Box(Modifier.fillMaxSize()) {
+                    Nebel(colorScheme.background, ton)
+                    Box(Modifier.fillMaxSize().koernung().scanlines().flimmern()) { content() }
+                }
+            } else {
+                content()
+            }
+        }
+    }
 }

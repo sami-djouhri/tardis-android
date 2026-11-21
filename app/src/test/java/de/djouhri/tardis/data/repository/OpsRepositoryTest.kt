@@ -5,6 +5,15 @@ import de.djouhri.tardis.data.demo.DemoData
 import de.djouhri.tardis.data.demo.DemoModeManager
 import de.djouhri.tardis.data.model.tardis.AbrufResponse
 import de.djouhri.tardis.data.model.tardis.AlarmeResponse
+import de.djouhri.tardis.data.model.tardis.AllesZuResponse
+import de.djouhri.tardis.data.model.tardis.BackupsResponse
+import de.djouhri.tardis.data.model.tardis.GemachtResponse
+import de.djouhri.tardis.data.model.tardis.OwnerSchritteResponse
+import de.djouhri.tardis.data.model.tardis.SpracheAnfrage
+import de.djouhri.tardis.data.model.tardis.SpracheAntwort
+import de.djouhri.tardis.data.local.StandAblage
+import de.djouhri.tardis.data.local.StandSpeicher
+import org.junit.Assert.assertNull
 import de.djouhri.tardis.data.model.tardis.DienstDetail
 import de.djouhri.tardis.data.model.tardis.HostsResponse
 import de.djouhri.tardis.data.model.tardis.LabErgebnis
@@ -53,6 +62,7 @@ class OpsRepositoryTest {
         var schreibAufrufe = 0
 
         override suspend fun alarme(): AlarmeResponse = AlarmeResponse(erreichbar = true)
+        override suspend fun tresoreAllesZu(): AllesZuResponse = AllesZuResponse(ok = true)
 
         override suspend fun detail(host: String, name: String): DienstDetail =
             DienstDetail(host = host, name = name)
@@ -62,6 +72,8 @@ class OpsRepositoryTest {
         override suspend fun reliability(fenster: Int): ReliabilityResponse = ReliabilityResponse(fensterMinuten = fenster)
 
         override suspend fun topologie(): TopologieResponse = TopologieResponse()
+
+        override suspend fun topologieZeitpunkt(vor: String) = de.djouhri.tardis.data.model.tardis.TopoZeitpunkt(vor = vor)
 
         override suspend fun wirte(fenster: Int): WirteResponse = WirteResponse(fensterMinuten = fenster)
 
@@ -79,6 +91,65 @@ class OpsRepositoryTest {
             schreibAufrufe++
             return LabErgebnis(ok = true, rc = 0)
         }
+
+        var netzWeg = false
+        override suspend fun backups(): BackupsResponse {
+            if (netzWeg) throw java.io.IOException("weg")
+            return BackupsResponse(gemessen = true)
+        }
+
+        override suspend fun ownerSchritte(): OwnerSchritteResponse {
+            if (netzWeg) throw java.io.IOException("weg")
+            return OwnerSchritteResponse(gemessen = true)
+        }
+
+        override suspend fun gemacht(id: String): GemachtResponse {
+            schreibAufrufe++
+            return GemachtResponse(id)
+        }
+
+        var gesendet = 0
+        override suspend fun sprechen(anfrage: SpracheAnfrage): SpracheAntwort {
+            gesendet++
+            return SpracheAntwort(antwort = "echt")
+        }
+    }
+
+    private class MerkAblage : StandAblage {
+        val inhalt = mutableMapOf<String, String>()
+        override fun lesen(schluessel: String) = inhalt[schluessel]
+        override fun schreiben(schluessel: String, inhalt: String) { this.inhalt[schluessel] = inhalt }
+    }
+
+    @Test
+    fun `demo schickt keine aufnahme und meldet nichts als gemacht`() = runTest {
+        val api = FakeOpsApi()
+        val repo = OpsRepository(api, DemoModeManager().apply { enable() })
+        repo.sprechen("AAAA", "audio/mp4").getOrThrow()
+        repo.gemacht("x").getOrThrow()
+        assertEquals(0, api.gesendet)
+        assertEquals(0, api.schreibAufrufe)
+    }
+
+    @Test
+    fun `sicherung kommt ohne netz aus dem speicher, owner-schritte nicht`() = runTest {
+        val api = FakeOpsApi()
+        val repo = OpsRepository(api, DemoModeManager(), StandSpeicher(MerkAblage()))
+        assertNull(repo.backups().getOrThrow().alt)
+        repo.ownerSchritte().getOrThrow()
+        api.netzWeg = true
+        assertTrue(repo.backups().getOrThrow().alt != null)
+        // Abhaken nur, was gerade gilt: kein alter Stand fuer Handgriffe.
+        assertTrue(repo.ownerSchritte().isFailure)
+    }
+
+    @Test
+    fun `demo liest keinen echten gespeicherten stand`() = runTest {
+        val ablage = MerkAblage()
+        OpsRepository(FakeOpsApi(), DemoModeManager(), StandSpeicher(ablage)).hosts()
+        assertTrue(ablage.inhalt.isNotEmpty())
+        val demoRepo = OpsRepository(FakeOpsApi(), DemoModeManager().apply { enable() }, StandSpeicher(ablage))
+        assertNull(demoRepo.letzteHosts())
     }
 
     @Test

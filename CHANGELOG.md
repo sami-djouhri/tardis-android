@@ -1,5 +1,133 @@
 # Changelog
 
+## Blau, Befehle unter Freigaben, lesbare Logs (2026-11-21, 2.0.31)
+
+Die App ist jetzt fest blau. Die Farbwahl in den Einstellungen ist weg, der
+Schalter „Effekte“ bleibt. Fehler sind wieder rot statt pink.
+
+Unter Freigaben gibt es den Abschnitt „Befehle“. Fertige Handgriffe liegen
+dort als Skript. Du siehst den ganzen Text, und erst danach lässt sich
+„Als root ausführen“ drücken. Nach dem Fingerabdruck führt host genau diesen
+Text aus und zeigt Ergebnis und Ausgabe. Hat ein Schritt unter „Wartet auf
+dich“ so ein Skript, steht dort ein Hinweis mit Sprung zu den Freigaben. Das
+gilt erst, wenn der Läufer auf host einmal eingerichtet ist (einmaliger
+Handgriff, die App nennt den Befehl).
+
+Die Inbox hat neue Knöpfe: „Erledigt“ als Hauptknopf, „Später“ mit Wahl
+(1 Stunde, 3 Stunden, morgen früh, eine Woche), Archiv und Quelle als Symbole.
+Nach jeder Aktion kommt unten „Rückgängig“.
+
+Die Verlaufslinien bei CPU, Speicher, Platte und Load tragen jetzt Uhrzeiten
+mit feinen Hilfslinien. Antippen oder Ziehen zeigt Uhrzeit und Wert an der
+Stelle. Das gilt für die Wirte und für den Verbrauch eines Dienstes.
+
+Logs stehen jetzt als Zeilen: Fehler rot, Warnungen gelb, Debug leise. Es gibt
+Filter (Alle, Warnungen, Fehler mit Zahl), eine Suche mit Markierung und einen
+Schalter für den Zeilenumbruch. Gleiche Zeilen hintereinander erscheinen einmal
+mit Zähler. Eine Vollbild-Ansicht ist dazugekommen.
+
+## Topologie wie im Web: Netz, Gedankenspiel, Zeitpunkt (2026-11-21, 2.0.31)
+
+Die Topologie zeigt jetzt als Vorgabe ein Netz wie der Graph in Obsidian:
+jeder Wirt ein Ring, seine Dienste als Wolke darum, größere Punkte für Dienste
+mit vielen Verbindungen. Beim Hineinzoomen erscheinen die Namen. „Ansicht“
+schaltet zurück auf das bisherige Raster nach Wirten.
+
+Im Blatt eines Dienstes oder Wirts gibt es „Ausfall durchspielen“. Die Karte
+zeigt dann rot, was ausfällt (bei einem Wirt alles darauf), und orange, was
+deshalb mit ausfällt. Oben steht die Liste der Folgen, ein Antippen springt
+zum Dienst.
+
+„Zeit“ zeigt den Stand von vor einer Stunde oder einem Tag: welche Dienste
+damals liefen, ungesund waren oder gegen das Soll fehlten. Die Linien bleiben
+beim heutigen Stand. Im Menü „Linien“ gibt es zusätzlich „Nur Abhängigkeiten“
+und „Alle zeigen“, bei „Farbe“ die Wahl „Wirt“.
+
+## Farbe wählen, Nebel und Glut (2026-11-21, 2.0.30)
+
+In den Einstellungen gibt es die Karte „Aussehen“. Dort lässt sich die Farbe
+der App wählen: Rot (wie bisher), Ultraviolett, Absinth oder Orchidee. Die
+Farbe trägt Titel, Knöpfe, die Eckwinkel der Karten und den aktiven Eintrag der
+Leiste. Grün, Gelb und Rot bleiben bei jeder Wahl die Ampel.
+
+Dazu kommen Effekte: ein langsam ziehender Nebel hinter allem, feines Korn,
+ein Glitch über dem Kopf, wenn während des Ansehens ein Alarm neu dazukommt,
+und ein atmender Lichthof um ausgefallene Dienste und den Zähler kritischer
+Alarme. Beim Seitenwechsel läuft eine Abtastlinie über die Seite. Der Schalter
+„Effekte“ stellt alles ab; sind am Telefon die Animationen aus, steht ohnehin
+alles still.
+
+## Bezug zum Haus, Quellen, Alarm-ID überall (2026-11-20, 2.0.28)
+
+Sicherheitsmeldungen in der Inbox sagen jetzt, ob die genannte Technik bei dir
+läuft, zum Beispiel „Im Haus: Java auf gamehost (mc-velocity …)“, in Gelb. Läuft
+sie nicht, steht dort „kein Treffer“. Ein Treffer heißt „läuft hier“, nicht
+„verwundbar“.
+
+Unter dem Titel stehen Thema und Quellen, etwa „Sicherheitslücke · 3 Quellen:
+Heise, Golem, ZEIT“. Bei mehreren Quellen bietet „Mehr“ alle zur Auswahl an.
+
+Die Alarm-ID lässt sich jetzt auch auf der Startseite kopieren: Alarmzeile
+gedrückt halten. Das Widget zeigt die ID vor dem wichtigsten Alarm.
+
+## Alarm-ID kopieren (2026-11-19, 2.0.27)
+
+Einen Alarm gedrückt halten kopiert seine ID in die Zwischenablage. Es ist
+dieselbe ID wie in der ntfy-Meldung und im Tardis-Web, dort per Rechtsklick.
+
+## Inbox mit Quelle (2026-11-19, 2.0.26)
+
+Jede Inbox-Karte mit einer Quelle bekommt den Knopf „Mehr". Bei Nachrichten
+öffnet er den Artikel im Browser, bei Briefen die Textansicht. Vorher ging der
+Link auf dem Weg in die Inbox verloren, die Karte zeigte nur die Kurzfassung.
+
+## Sicherung, Sprach-host, Handgriffe, ohne Netz (2026-11-17, 2.0.25)
+
+Oben rechts gibt es ein Mikrofon: antippen, den runden Knopf gedrückt halten,
+sprechen, loslassen. host antwortet als Text und mit der Haus-Stimme, wie am
+Lautsprecher. Erkennung und Stimme laufen im Haus, die Aufnahme wird nach dem
+Senden gelöscht. Beim ersten Mal fragt die App nach dem Mikrofon.
+
+Neu auf der Startseite: „Wartet auf dich" zeigt, was heute nur du tun kannst,
+mit den Befehlen zum Kopieren. „Gemacht" meldet einen Schritt zurück; er bleibt
+stehen, bis die Gegenprobe grün ist.
+
+Neu ist auch „Sicherung": je Wirt, wie alt die letzte Sicherung ist und ob die
+letzte Rückspielprobe gelungen ist, dazu Befunde wie ein Laptop, der seit Wochen
+nicht gesichert hat.
+
+Ohne Verbindung zeigt die App den letzten Stand von Start, Alarmen, Wirten und
+Sicherung, mit einem Band „Ohne Verbindung" und der Uhrzeit dieses Standes.
+Beim Öffnen steht der letzte Stand sofort da, statt „Lade Status…". Steuern
+geht weiterhin nur mit Verbindung. Der Stand liegt verschlüsselt auf dem
+Telefon und kommt in keine Gerätesicherung.
+
+## Notknopf und Sperre (2026-11-15, 2.0.24)
+
+Neu: der Notknopf. Oben auf der Startseite steht „Alle Tresore schließen“, ein
+Druck genügt, ohne Rückfrage. Er schließt Filme, Musik, Privat, Briefkasten und
+Medien und zeigt danach für jeden Tresor, ob er zu ist. Öffnen geht hier nicht.
+Denselben Knopf gibt es als Schnelleinstellungs-Kachel „Tresore zu“: über die
+Kachelbearbeitung der Systemleiste hinzufügen. Sie meldet das Ergebnis als
+Benachrichtigung, auch wenn die Leiste gleich wieder zu ist.
+
+Die App fragt jetzt bei jedem Start und nach 5 Minuten im Hintergrund nach
+Fingerabdruck oder Geräte-PIN. Der Notknopf steht auch auf dem Sperrbildschirm
+und geht ohne Entsperren.
+
+Jeder Alarm trägt eine kurze Kennung wie A-7K2Q. Dieselbe steht im Titel der
+ntfy-Meldung und in Tardis-Web; ein Tipp auf die ntfy-Meldung öffnet Tardis-Web
+direkt bei diesem Alarm.
+
+## Terminal-Look (2026-11-15, 2.0.23)
+
+Neuer Look: dunkles Terminal in Dunkelrot, alle Schriften in JetBrains Mono,
+eckige Flächen, feine Scanlines und ab und zu ein leichtes Flimmern. Rot ist
+jetzt die Farbe für Knöpfe und Hervorhebungen; Fehler und Ausfälle stehen
+deshalb in Pink, damit man sie nicht mit einem Knopf verwechselt. Wer am Telefon
+die Animationen abschaltet, bekommt kein Flimmern. Das Widget trägt dieselben
+Farben.
+
 ## Bildschirmschutz (2026-11-14, 2.0.22)
 
 Die App lässt keine Bildschirmfotos und keine Aufnahme durch andere Apps mehr

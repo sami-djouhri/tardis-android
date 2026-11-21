@@ -23,7 +23,9 @@ import de.djouhri.tardis.data.model.tardis.TopoDienst
 import de.djouhri.tardis.data.model.tardis.TopoVerbindung
 import de.djouhri.tardis.data.model.tardis.TopoWirt
 import de.djouhri.tardis.data.model.tardis.TopologieResponse
+import de.djouhri.tardis.data.model.tardis.TopoZeitpunkt
 import de.djouhri.tardis.data.model.tardis.kartenLayout
+import de.djouhri.tardis.data.model.tardis.netzLayout
 import de.djouhri.tardis.ui.theme.HomelabTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -198,5 +200,70 @@ class TopologieKarteTest {
         compose.onNodeWithText("beta-dienst-mit-langem-namen-7").assertIsDisplayed()
         compose.onNodeWithText("Nicht mehr da: alter-dienst").assertIsDisplayed()
         compose.onRoot().captureRoboImage("build/outputs/roborazzi/topologie-gross-aenderungen.png")
+    }
+
+    private val netz by lazy { netzLayout(echteGroesse) }
+
+    private fun zeichneNetz(zeitVor: String? = null, zeitpunkt: TopoZeitpunkt? = null) {
+        compose.setContent {
+            HomelabTheme {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    Karte(echteGroesse, kartenLayout(echteGroesse), { _, _ -> }, netz = netz, zeitVor = zeitVor, zeitpunkt = zeitpunkt)
+                }
+            }
+        }
+        compose.waitForIdle()
+        shadowOf(Looper.getMainLooper()).idle()
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/topologie-netz-1.png")
+    }
+
+    @Test
+    fun netzIstVorgabeUndZeichnetGezoomtOhneAbsturz() {
+        zeichneNetz()
+        compose.onNodeWithText("Ansicht: Netz").assertIsDisplayed()
+        val karte = compose.onNodeWithContentDescription("Karte der Wirte und Dienste", substring = true)
+        // Weit hinein: ab einem Abstand kommen alle Dienstnamen in Bildschirmgroesse.
+        repeat(4) {
+            karte.performTouchInput {
+                pinch(center - Offset(20f, 0f), center - Offset(300f, 0f), center + Offset(20f, 0f), center + Offset(300f, 0f))
+            }
+            compose.waitForIdle()
+        }
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/topologie-netz-zoom.png")
+        compose.onNodeWithText("Ansicht: Netz").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Ansicht: Raster").assertIsDisplayed()
+    }
+
+    @Test
+    fun durchspielenZeigtWerMitAusfaellt() {
+        zeichneNetz()
+        compose.onNodeWithText("Dienst, Wirt oder Gruppe suchen").performTextInput("gamma-2")
+        compose.waitForIdle()
+        compose.onNodeWithText("gamma-dienst-mit-langem-namen-2").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Ausfall durchspielen").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Gedankenspiel: gamma-dienst-mit-langem-namen-2 aus").assertIsDisplayed()
+        compose.onNodeWithText("1 Dienst fällt mit aus.").assertIsDisplayed()
+        compose.onNodeWithText("gamma-dienst-mit-langem-namen-1").assertIsDisplayed()
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/topologie-netz-durchspiel.png")
+        compose.onNodeWithText("Beenden").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Gedankenspiel", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun zeitpunktZeigtBannerUndLegende() {
+        val z = TopoZeitpunkt(
+            vor = "1h",
+            zustaende = echteGroesse.dienste.associate { it.id to if (it.id == "alpha-3") "ungesund" else "lief" },
+            wirte = mapOf("kappa" to "nicht_erreichbar"),
+        )
+        zeichneNetz(zeitVor = "1h", zeitpunkt = z)
+        compose.onNodeWithText("Zeit: vor 1 Stunde").assertExists()
+        compose.onNodeWithText("Punkte zeigen den Stand vor 1 Stunde, Linien den heutigen · 1 damals auffällig").assertIsDisplayed()
+        compose.onNodeWithText(" ungesund 1").assertIsDisplayed()
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/topologie-netz-zeit.png")
     }
 }

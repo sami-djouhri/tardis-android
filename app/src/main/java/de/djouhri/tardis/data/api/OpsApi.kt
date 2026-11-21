@@ -2,18 +2,26 @@ package de.djouhri.tardis.data.api
 
 import de.djouhri.tardis.data.model.tardis.AbrufResponse
 import de.djouhri.tardis.data.model.tardis.AlarmeResponse
+import de.djouhri.tardis.data.model.tardis.AllesZuResponse
+import de.djouhri.tardis.data.model.tardis.BackupsResponse
+import de.djouhri.tardis.data.model.tardis.GemachtResponse
+import de.djouhri.tardis.data.model.tardis.OwnerSchritteResponse
+import de.djouhri.tardis.data.model.tardis.SpracheAnfrage
+import de.djouhri.tardis.data.model.tardis.SpracheAntwort
 import de.djouhri.tardis.data.model.tardis.DienstDetail
 import de.djouhri.tardis.data.model.tardis.HostsResponse
 import de.djouhri.tardis.data.model.tardis.LabErgebnis
 import de.djouhri.tardis.data.model.tardis.LogsResponse
 import de.djouhri.tardis.data.model.tardis.ReliabilityResponse
 import de.djouhri.tardis.data.model.tardis.WirteResponse
+import de.djouhri.tardis.data.model.tardis.TopoZeitpunkt
 import de.djouhri.tardis.data.model.tardis.TopologieResponse
 import de.djouhri.tardis.data.model.tardis.ServiceActionResult
 import de.djouhri.tardis.data.model.tardis.ServiceSummary
 import de.djouhri.tardis.data.model.tardis.WartungErgebnis
 import de.djouhri.tardis.data.model.tardis.WeckErgebnis
 import de.djouhri.tardis.di.LANGE_FRIST_HEADER
+import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Headers
 import retrofit2.http.POST
@@ -67,6 +75,10 @@ interface OpsApi {
     @GET("v1/ops/topologie")
     suspend fun topologie(): TopologieResponse
 
+    /** Dienststand vor 1 h oder 1 Tag (`vor` = 1h | 1d), gerechnet von mobile-api. */
+    @GET("v1/ops/topologie/zeitpunkt")
+    suspend fun topologieZeitpunkt(@Query("vor") vor: String): TopoZeitpunkt
+
     /** Dienste des Weckers und das AD-Lab. */
     @GET("v1/ops/abruf")
     suspend fun abruf(): AbrufResponse
@@ -84,7 +96,35 @@ interface OpsApi {
      * Clients brach die App ab, waehrend der Start auf dem Node weiterlief,
      * und meldete einen Fehler fuer etwas, das gelang.
      */
+    /**
+     * Notknopf: alle Tresore schliessen, nie oeffnen. Aushaengen wartet auf
+     * gestoppte Container, deshalb die lange Frist wie beim Lab-Start.
+     */
+    @Headers("$LANGE_FRIST_HEADER: 210")
+    @POST("v1/ops/tresore/alles-zu")
+    suspend fun tresoreAllesZu(): AllesZuResponse
+
     @Headers("$LANGE_FRIST_HEADER: 210")
     @POST("v1/ops/lab/{aktion}")
     suspend fun lab(@Path("aktion") aktion: String): LabErgebnis
+
+    /** Sicherungsstand je Wirt mit Rueckspielprobe (seit 2.0.25). */
+    @GET("v1/ops/backups")
+    suspend fun backups(): BackupsResponse
+
+    /** Was nur der Owner tun kann, aus dem Aufgaben-Dienst (seit 2.0.25). */
+    @GET("v1/owner/schritte")
+    suspend fun ownerSchritte(): OwnerSchritteResponse
+
+    /** Meldet einen Schritt als gemacht. Hakt nicht ab: das tut erst die Gegenprobe. */
+    @POST("v1/owner/schritte/{id}/gemacht")
+    suspend fun gemacht(@Path("id") id: String): GemachtResponse
+
+    /**
+     * Sprach-host: Aufnahme hin, Text und Haus-Stimme zurueck. STT, Antwort
+     * und Synthese zusammen dauern bei einer Wissensfrage gut 20 s.
+     */
+    @Headers("$LANGE_FRIST_HEADER: 100")
+    @POST("v1/sprache")
+    suspend fun sprechen(@Body anfrage: SpracheAnfrage): SpracheAntwort
 }

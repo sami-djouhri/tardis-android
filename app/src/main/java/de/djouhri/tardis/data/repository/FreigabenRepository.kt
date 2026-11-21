@@ -2,6 +2,11 @@ package de.djouhri.tardis.data.repository
 
 import de.djouhri.tardis.data.api.FreigabenApi
 import de.djouhri.tardis.data.demo.DemoModeManager
+import de.djouhri.tardis.data.model.tardis.Befehl
+import de.djouhri.tardis.data.model.tardis.BefehlAngenommen
+import de.djouhri.tardis.data.model.tardis.BefehlErgebnis
+import de.djouhri.tardis.data.model.tardis.BefehlUnterschrift
+import de.djouhri.tardis.data.model.tardis.BefehleAntwort
 import de.djouhri.tardis.data.model.tardis.FreigabeCommit
 import de.djouhri.tardis.data.model.tardis.FreigabeErgebnis
 import de.djouhri.tardis.data.model.tardis.FreigabeStand
@@ -33,7 +38,36 @@ class FreigabenRepository @Inject constructor(
         return runCatching { api.freigeben(w.wirt, w.projekt, w.commit, u) }
     }
 
+    suspend fun befehle(): Result<BefehleAntwort> {
+        if (demo.isActive) return Result.success(DEMO_BEFEHLE)
+        return runCatching { api.befehle() }
+    }
+
+    suspend fun befehlFreigeben(b: Befehl, u: BefehlUnterschrift): Result<BefehlAngenommen> {
+        if (demo.isActive) return Result.success(BefehlAngenommen(true))
+        return runCatching { api.befehlFreigeben(b.id, u) }
+    }
+
     companion object {
+        val DEMO_BEFEHLE = BefehleAntwort(
+            eingerichtet = true,
+            befehle = listOf(
+                Befehl(
+                    id = "beispiel-timer", titel = "Beispiel-Timer einschalten",
+                    warum = "Der Timer prüft nachts die Sicherung.", rueckweg = "systemctl disable --now beispiel.timer",
+                    sha256 = "5d41402abc4b2a76b9719d911017c592ae2b6fd0b0b5b3e0a1c2d3e4f5a6b7c8",
+                    inhalt = "#!/usr/bin/env bash\n# titel: Beispiel-Timer einschalten\nset -euo pipefail\nsystemctl enable --now beispiel.timer\nsystemctl is-active beispiel.timer\n",
+                ),
+                Befehl(
+                    id = "beispiel-firewall", titel = "Beispiel-Regel setzen",
+                    sha256 = "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3a94a8fe5ccb19ba61c4c0873",
+                    inhalt = "#!/usr/bin/env bash\nufw allow from 192.0.2.10 to any port 9\n",
+                    ergebnis = BefehlErgebnis(zustand = "ok", rc = 0, ausgabe = "Rule added", ende = 1_800_000_000),
+                ),
+            ),
+        )
+
+
         /** Erfundene Beispieldaten fuer Demo-Modus und Bildschirmfoto-Test. */
         val DEMO = FreigabenAntwort(
             konfiguriert = true,
