@@ -45,6 +45,7 @@ jobs:
         with:
           name: cockpit-debug-unsigned
           path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
 
       - name: Lint-Report ablegen
         if: always()
@@ -52,3 +53,4 @@ jobs:
         with:
           name: lint-report
           path: app/build/reports/lint-results-debug.html
+          retention-days: 7

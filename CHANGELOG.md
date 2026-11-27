@@ -1,5 +1,11 @@
 # Changelog
 
+## Reparatur (2026-11-27, 2.0.37)
+
+2.0.36 stürzte direkt beim Start ab. Die neue Werkzeugkette hatte beim
+Verkleinern der App einen Teil entfernt, den die Hintergrundaufgaben zum
+Start brauchen. 2.0.37 startet wieder normal.
+
 ## Pflege (2026-11-27, 2.0.36)
 
 Neue Werkzeugkette unter der Haube: AGP 9.1, Kotlin 2.4 und Navigation 2.10.

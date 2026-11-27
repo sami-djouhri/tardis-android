@@ -26,7 +26,7 @@ val gatewayUrl: String = (project.findProperty("tardis.gatewayUrl") as String?)?
 
 val tardisVersionCode: Int = (project.findProperty("tardis.versionCode") as String?)?.toIntOrNull()
     ?: System.getenv("TARDIS_VERSION_CODE")?.toIntOrNull()
-    ?: 36
+    ?: 37
 
 android {
     namespace = "de.djouhri.tardis"
