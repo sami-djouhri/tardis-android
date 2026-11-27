@@ -46,8 +46,7 @@ private val LightColorScheme = lightColorScheme(
     outlineVariant = BorderLight,
 )
 
-internal val dunklesSchemaBlau = darkColorScheme(
-    // Seit 2.0.31 Blau (Owner 2026-11-21), die Werte stehen in Color.kt.
+internal val dunklesSchemaAmber = darkColorScheme(
     primary = AccentDark,
     onPrimary = AccentForegroundDark,
     primaryContainer = AccentSoftDark,
@@ -86,19 +85,6 @@ internal val dunklesSchemaBlau = darkColorScheme(
     inverseOnSurface = BgDark,
 )
 
-/**
- * @param dynamicColor Steht seit 2026-09-27 auf false, und das ist die
- *   eigentliche Aenderung am Erscheinungsbild. Mit `true` ersetzt Android ab
- *   Version 12 die gesamte Palette durch eine aus dem Hintergrundbild
- *   abgeleitete: die hier sorgfaeltig gesetzten Farben kamen auf einem aktuellen
- *   Telefon also nie zum Vorschein, die App sah bei jedem Hintergrundwechsel
- *   anders aus. Schlimmer ist das bei einem Tardis als bei einer Spiele-App,
- *   weil Farbe hier Bedeutung traegt: der Update-Hinweis benutzt
- *   `primaryContainer`, und wenn das je nach Wandbild rot-orange ausfaellt,
- *   liest es sich wie eine Warnung. Die Statusfarben (gruen/gelb/rot) lagen
- *   ohnehin fest und standen dann neben einer fremden Palette.
- *   Zurueckdrehen ist ein Wort an dieser Stelle.
- */
 @Composable
 fun HomelabTheme(
     darkTheme: Boolean = true,
@@ -106,13 +92,13 @@ fun HomelabTheme(
     effekte: Boolean = Aussehen.effekte,
     content: @Composable () -> Unit
 ) {
-    val ton = TardisTon.BLAU
+    val ton = TardisTon.AMBER
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> dunklesSchemaBlau
+        darkTheme -> dunklesSchemaAmber
         else -> LightColorScheme
     }
 

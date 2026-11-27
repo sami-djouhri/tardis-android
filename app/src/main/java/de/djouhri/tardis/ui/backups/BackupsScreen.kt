@@ -214,7 +214,6 @@ private fun Messzeile(label: String, wert: String, farbe: Color) {
     }
 }
 
-/** Grau heisst „nicht gemessen", nie gruen: fehlende Information ist kein guter Zustand. */
 @Composable
 private fun farbe(w: BackupWirt): Color = when {
     w.bekanntAus -> StatusIdle

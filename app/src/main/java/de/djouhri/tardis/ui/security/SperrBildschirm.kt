@@ -26,16 +26,6 @@ import de.djouhri.tardis.ui.theme.StatusDown
 import de.djouhri.tardis.ui.theme.TextLeise
 import de.djouhri.tardis.ui.tresore.NotknopfKarte
 
-/**
- * Sperrbildschirm der App (Owner B84): Biometrie oder Geraete-PIN bei jedem
- * Start und nach 5 Minuten im Hintergrund. Der Notknopf steht hier mit drauf,
- * er geht ohne Entsperren.
- *
- * Ohne eingerichteten Geraeteschutz gibt es nichts, wogegen geprueft werden
- * koennte. Dann sagt der Bildschirm das und laesst weiter, statt die App
- * unbenutzbar zu machen: die Sperre waere ohnehin nicht staerker als das
- * ungesperrte Telefon.
- */
 @Composable
 fun SperrBildschirm(onEntsperrt: () -> Unit) {
     val auth = rememberDeviceAuth()

@@ -12,22 +12,6 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "deps"
-    # EIN PR FUER DIE VERZAHNTE WERKZEUGKETTE (2026-10-25).
-    # Gemessen am 25.10.: fuenf offene Gradle-PRs, alle rot, und die
-    # Fehlschlaege reichen bis zum 10.08. zurueck, also ueber drei
-    # Dependabot-Laeufe. Rot sind genau die Teile, die sich gegenseitig
-    # bedingen: kotlin, ksp (dessen Version die Kotlin-Version im Namen
-    # traegt), compose-bom (seit Kotlin 2.0 haengt der Compose-Compiler am
-    # Kotlin-Plugin) und hilt (ueber KSP). Einzeln kann keiner davon gruen
-    # werden, der Stapel ist also strukturell unaufloesbar und nicht nur
-    # ungelesen. Gruen waren im selben Zeitraum nur die unverzahnten Bumps
-    # (fragment, gradle-wrapper).
-    # ⚠ `agp` gehoert in die Gruppe, obwohl Dependabot dafuer bisher keinen PR
-    # geschickt hat: es steht auf 8.9.2, und eine compose-bom von 2026 laeuft
-    # darauf nicht. Ohne AGP im Bund waere die Gruppe wieder unvollstaendig
-    # und damit wieder rot.
-    # Die 5er-Grenze bleibt: sobald der Knoten EIN PR ist, werden Plaetze
-    # frei, statt dass sie von dauerhaft unmergebaren Vorschlaegen belegt sind.
     groups:
       android-werkzeugkette:
         patterns:

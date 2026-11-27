@@ -3,14 +3,6 @@ package de.djouhri.tardis.data.model.tardis
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * Sicherungsstand aus `GET /v1/ops/backups` (seit 2.0.25).
- *
- * Zwei Fragen je Wirt: ist die letzte Sicherung jung genug (`ok`), und kam bei
- * der letzten Rueckspielprobe etwas Brauchbares zurueck (`probeOk`). Erst beides
- * zusammen ist eine Sicherung; ein gruener Lauf beweist nur, dass geschrieben
- * wurde. `null` heisst nicht gemessen und wird nie gruen gezeichnet.
- */
 @Serializable
 data class BackupsResponse(
     val gemessen: Boolean = false,

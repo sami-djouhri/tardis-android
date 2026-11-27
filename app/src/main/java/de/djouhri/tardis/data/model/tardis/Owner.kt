@@ -9,13 +9,6 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 
-/**
- * Was nur der Owner tun kann, aus `GET /v1/owner/schritte` (seit 2.0.25).
- *
- * Quelle ist der Aufgaben-Dienst (Projekt `homelab-owner`), ueber einen
- * Abgleich auf host alle 5 Minuten. „Gemacht" meldet nur zurueck; abgehakt
- * wird erst nach der Gegenprobe, deshalb bleibt ein gemeldeter Schritt stehen.
- */
 @Serializable
 data class OwnerSchritteResponse(
     val gemessen: Boolean = false,
@@ -74,7 +67,6 @@ data class OwnerSchritt(
     /** Plantag (ISO-Datum) oder null. */
     val tag: String? = null,
     val faellig: String? = null,
-    /** Wartegrund, z. B. „Owner meldet gemacht …, Gegenprobe steht aus". */
     val wartet: String? = null,
     /** „Gemacht" ist gemeldet, der Abgleich hat es noch nicht uebertragen. */
     val gemeldet: Boolean = false,
@@ -84,7 +76,6 @@ data class OwnerSchritt(
 ) {
     val tagDatum: LocalDate? get() = tag?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
 
-    /** Weder gemeldet noch wartend: der Owner ist am Zug. */
     val istOffen: Boolean get() = wartet == null && !gemeldet
 
     /** Rot nach Ablauf der Frist: der Schritt ist wieder dran, mit Befund. */
@@ -103,7 +94,6 @@ private fun tageText(n: Long): String = when (n) {
     else -> "seit $n Tagen"
 }
 
-/** „verpasst: Mi 18.11., seit 3 Tagen" oder null, wenn der Plantag nicht vorbei ist. */
 fun verpasstText(s: OwnerSchritt, heute: LocalDate): String? {
     val tag = s.tagDatum ?: return null
     if (!tag.isBefore(heute)) return null

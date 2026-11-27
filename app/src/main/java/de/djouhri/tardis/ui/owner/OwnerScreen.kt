@@ -225,7 +225,7 @@ fun OwnerInhalt(
                     )
                 }
                 items(liste, key = { it.id }) {
-                    SchrittKarte(it, heute, jetzt, onGemacht = { frage = it }, alsBefehl = it.id in alsBefehl, onOpenFreigaben = onOpenFreigaben)
+                    SchrittKarte(it, heute, jetzt, onGemacht = { frage = it }, alsBefehl = alsBefehl.any { s -> it.id.startsWith(s) }, onOpenFreigaben = onOpenFreigaben)
                 }
             }
         }

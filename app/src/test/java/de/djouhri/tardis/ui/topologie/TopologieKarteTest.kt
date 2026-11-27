@@ -85,9 +85,6 @@ class TopologieKarteTest {
         }
         compose.waitForIdle()
         shadowOf(Looper.getMainLooper()).idle()
-        // Ohne Bildaufnahme laeuft unter Robolectric die Zeichenphase nicht,
-        // der Test waere dann gruen, ohne die Canvas je gezeichnet zu haben
-        // (so am 2026-11-08 passiert). Laufen mit `recordRoborazziDebug`.
         compose.onRoot().captureRoboImage("build/outputs/roborazzi/topologie-gross-1.png")
     }
 

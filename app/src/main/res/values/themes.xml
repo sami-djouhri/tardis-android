@@ -2,6 +2,6 @@
 <resources>
     <!-- Nur das Startfenster: dunkel wie die App, damit der Start nicht weiss aufblitzt. -->
     <style name="Theme.HomelabApp" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">#FF14171A</item>
+        <item name="android:windowBackground">#FF070503</item>
     </style>
 </resources>

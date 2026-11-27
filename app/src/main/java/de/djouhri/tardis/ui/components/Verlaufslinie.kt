@@ -34,21 +34,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/**
- * Eine Linie ohne Achsen: auf dem Telefon zaehlt die Form, der Wert steht daneben.
- *
- * @param bereich feste Skala, etwa 0..100 fuer Prozent. Ohne sie wird die Reihe
- *   auf ihr eigenes Min/Max gestreckt, und ein Wirt mit 2 bis 4 % CPU sieht dann
- *   genauso unruhig aus wie einer mit 20 bis 95 %. Zum Vergleich mehrerer Wirte
- *   taugt nur die feste Skala.
- * @param werte `null` ist eine Messluecke: die Linie setzt dort ab, statt eine
- *   Null zu zeichnen, die nie gemessen wurde.
- * @param zeiten Unix-Sekunden je Punkt, gleich lang wie [werte]. Mit ihnen
- *   bekommt die Linie eine Zeitachse (runde Uhrzeiten mit feinen Hilfslinien)
- *   und zeigt beim Antippen oder Ziehen Uhrzeit und Wert (seit 2.0.31; vorher
- *   stand nirgends, wann eine Spitze war).
- * @param wertText Wert fuer die Anzeige beim Antippen, etwa „37 %".
- */
 @Composable
 fun Verlaufslinie(
     werte: List<Double?>,

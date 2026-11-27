@@ -152,14 +152,6 @@ fun PairingScreen(viewModel: PairingViewModel = hiltViewModel()) {
         )
         Spacer(Modifier.height(16.dp))
 
-        // Wo der QR-Code herkommt, stand bis 2026-09-20 nirgends. Der Bildschirm
-        // sagte „im internen Netz" und zeigte einen Scanner, und wer die Adresse
-        // nicht auswendig kannte, kam nur bis zur Demo.
-        //
-        // Die Adresse kommt aus BuildConfig und steht nicht im Quelltext: dieses
-        // Repo wird öffentlich gespiegelt, und eine fest eingetragene interne
-        // Adresse wäre preisgegebene Topologie. Im öffentlichen Bau steht hier
-        // der Loopback-Platzhalter, im internen die echte Gateway-Adresse.
         Surface(
             color = MaterialTheme.colorScheme.surfaceVariant,
             shape = MaterialTheme.shapes.medium,

@@ -3,13 +3,6 @@ package de.djouhri.tardis.data.model.tardis
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * Ein Container im Detail (/v1/ops/services/{host}/{name}/detail, seit 2.0.12).
- *
- * Jeder der vier Teile sagt selbst, ob er gemessen wurde. Das ist der Punkt:
- * eine leere Ereignisliste auf einem Wirt, den niemand beobachtet, saehe sonst
- * genauso aus wie „nie ausgefallen".
- */
 @Serializable
 data class DienstDetail(
     val host: String = "",

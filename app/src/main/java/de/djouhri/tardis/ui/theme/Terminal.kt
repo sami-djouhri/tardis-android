@@ -27,14 +27,6 @@ import de.djouhri.tardis.R
 import kotlin.random.Random
 import kotlinx.coroutines.delay
 
-/*
- * Terminal-Stil (2.0.23, Entscheid 2026-11-15, R16-R18 und R53-R55):
- * Dunkelrot, JetBrains Mono, Scanlines, Flimmern. Dieselbe Umsetzung wie
- * `Stil.kt` in saganta-apps/core; die Tardis-App ist ein eigenes Projekt und
- * haengt nicht an core, deshalb steht sie hier ein zweites Mal. Wer dort etwas
- * aendert, zieht es hier nach.
- */
-
 private val JetBrainsMono = FontFamily(
     Font(R.font.jetbrains_mono_400, FontWeight.Normal),
     Font(R.font.jetbrains_mono_500, FontWeight.Medium),

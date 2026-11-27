@@ -74,25 +74,6 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.lang.reflect.Proxy
 
-/**
- * Jede Flaeche einmal gezeichnet, ausschliesslich mit den Demo-Daten.
- *
- * Warum es das gibt: bis 2.0.11 hat niemand die Bildschirme der App je
- * angesehen, ausser auf dem Telefon des Owners. Ein Blick auf das echte Geraet
- * zeigt echte Daten, und die gehoeren nicht in ein Bild, das ich lese
- * (Owner 2026-11-02). Die Demo-Daten sind erfunden
- * und decken jeden Zustand ab, den die App unterscheidet.
- *
- * Die Repositories bekommen eine API, die bei JEDEM Aufruf scheitert: kommt ein
- * Bild trotzdem mit Inhalt heraus, stammt er nachweislich aus der Demo.
- *
- * Erzeugen: `./gradlew :app:recordRoborazziDebug`, Bilder unter
- * `app/build/outputs/roborazzi/`. Ein normaler `testDebugUnitTest` baut
- * dieselben Flaechen ohne Bild auf, faengt also Abstuerze beim Aufbau.
- * Abstuerze beim ZEICHNEN (Canvas, drawText) faengt nur der Aufnahmelauf:
- * ohne Bild laeuft unter Robolectric keine Zeichenphase. So blieb der
- * Topologie-Absturz in 2.0.16 und 2.0.17 verborgen.
- */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 // 360 dp ist ein schmales, haeufiges Telefon; die Hoehe reicht fuer lange Flaechen.
@@ -244,6 +225,8 @@ class BildschirmeTest {
             state = FreigabenUiState(
                 loading = false, antwort = FreigabenRepository.DEMO, fingerabdruck = "0".repeat(64),
                 befehle = FreigabenRepository.DEMO_BEFEHLE,
+                verlauf = FreigabenRepository.DEMO_VERLAUF,
+                hausbus = FreigabenRepository.DEMO_HAUSBUS,
             ),
             geraeteschutz = true,
             onFreigeben = {},

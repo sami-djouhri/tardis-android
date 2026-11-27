@@ -6,14 +6,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * Prueft die beiden Zusagen des Entkoppelns: Reihenfolge und „lokal immer".
- *
- * Anlass: bis zum 2026-10-09 rief die App `POST /v1/auth/unpair` gar nicht auf
- * und loeschte nur lokal. Das Token blieb damit bis zu 30 Tage gueltig,
- * waehrend die Oberflaeche „entkoppelt" meldete. Die Serverseite war seit dem
- * 2026-09-27 fertig; angeschlossen war sie nie.
- */
 class EntkoppelnTest {
 
     @Test

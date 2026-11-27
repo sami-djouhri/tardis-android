@@ -1,5 +1,41 @@
 # Changelog
 
+## Pflege (2026-11-27, 2.0.36)
+
+Neue Werkzeugkette unter der Haube: AGP 9.1, Kotlin 2.4 und Navigation 2.10.
+An der Bedienung ändert sich nichts.
+
+## Pflege (2026-11-26, 2.0.35)
+
+Bibliotheken auf neuem Stand: DataStore 1.3, Bouncy Castle 1.86 (Kopplung
+und Gerätezertifikat). Ablehnungstexte unter Freigaben nennen
+keine Werkzeugnamen mehr. Sonst ändert sich nichts an der Bedienung.
+
+## Freigaben ausgebaut (2026-11-21, 2.0.32)
+
+Oben stehen jetzt Zähler: wie viele Deploys warten, wie viele Befehle offen
+sind, was gerade läuft und was gescheitert ist.
+
+Befehle können auch auf node1 laufen (Marke „node1“ an der Karte). Je Wirt
+steht da, ob sein Läufer eingerichtet ist und wann er zuletzt nachgesehen hat.
+Skripte mit Probelauf haben den Knopf „Probelauf“: das Skript zeigt nur, was es
+tun würde, und ändert nichts. Während ein Befehl läuft, steht die Ausgabe
+live in der Karte, mit „Abbrechen“ (auch das per Fingerabdruck). Ist ein Lauf
+gescheitert, ist die Ausgabe gleich offen.
+
+Deploys und Befehle lassen sich ablehnen, mit einem Grund. Dann läuft nichts,
+das Deploy wartet nicht mehr bzw. der Befehl steht als abgelehnt da, und
+der Grund wird zur Aufgabe. Ein neuer
+Stand wartet wieder. Deploy-Karten zeigen, wie lange sie schon warten (nach
+24 h gelb).
+
+Unten gibt es einen Verlauf: was freigegeben, abgelehnt oder abgebrochen wurde
+und wie jeder Lauf ausging, mit Ausgabe zum Aufklappen.
+
+Benachrichtigungen kommen jetzt auch für neue Befehle und für fertige Läufe
+(gelungen oder gescheitert), und einmal als Erinnerung, wenn ein Deploy länger
+als 24 h wartet.
+
 ## Blau, Befehle unter Freigaben, lesbare Logs (2026-11-21, 2.0.31)
 
 Die App ist jetzt fest blau. Die Farbwahl in den Einstellungen ist weg, der

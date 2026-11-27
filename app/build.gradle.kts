@@ -1,9 +1,9 @@
 import java.io.File
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
@@ -24,31 +24,13 @@ val gatewayUrl: String = (project.findProperty("tardis.gatewayUrl") as String?)?
     ?: System.getenv("TARDIS_GATEWAY_URL")?.takeIf { it.isNotBlank() }
     ?: "http://127.0.0.1:8140"
 
-// ⚠⚠ DIESE ZAHL WIRD BEIM AUSLIEFERN HOCHGEZAEHLT, NICHT BEIM BAUEN.
-//
-// Sie stand bis 2026-09-27 auf 2, waehrend ausgeliefert war 4: ein Bau ohne
-// gesetzte Property haette ein Downgrade erzeugt, das Android wortlos ablehnt
-// und das wie ein kaputtes Update aussieht.
-//
-// Am 2026-10-09 ist derselbe Mechanismus in die andere Richtung
-// umgeschlagen, und das ist der schwerere Fall: die APK wurde ohne Property
-// gebaut, bekam also die Vorgabe 5 -- dieselbe Nummer wie die bereits
-// ausgelieferte. Ein Downgrade faellt auf (der Installer weigert sich), ein
-// STILLSTAND nicht: `/app-version` haette 6 angekuendigt, die Datei darunter
-// waere 5 gewesen, und die App haette dasselbe Update bei jeder Pruefung
-// erneut angeboten, in Schleife. Gemessen wurde es nur, weil die APK vor dem
-// Ausliefern gegen das Manifest geprueft wurde (`ausliefern.sh`).
-//
-// Darum ist die Reihenfolge jetzt: hier hochzaehlen, committen, DANN bauen.
-// Die Property bleibt als Notausgang, aber der Normalweg braucht sie nicht --
-// und ein Normalweg ohne Handgriff ist einer, den man nicht vergessen kann.
 val tardisVersionCode: Int = (project.findProperty("tardis.versionCode") as String?)?.toIntOrNull()
     ?: System.getenv("TARDIS_VERSION_CODE")?.toIntOrNull()
-    ?: 31
+    ?: 36
 
 android {
     namespace = "de.djouhri.tardis"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "de.djouhri.tardis"
@@ -112,10 +94,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
@@ -129,7 +107,17 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
             excludes += "/META-INF/DEPENDENCIES"
+            // seit 1.86 liegt in bcpkix, bcutil und bcprov je eine LICENSE.md
+            excludes += "/META-INF/LICENSE.md"
         }
+    }
+}
+
+// AGP 9 bringt Kotlin selbst mit (kein org.jetbrains.kotlin.android mehr),
+// das fruehere kotlinOptions im android-Block gibt es dort nicht.
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 

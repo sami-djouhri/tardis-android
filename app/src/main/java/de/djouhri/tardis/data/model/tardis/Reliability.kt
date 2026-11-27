@@ -72,6 +72,5 @@ data class ReliabilityResponse(
     val system: List<SystemMetrik> = emptyList(),
     @SerialName("fenster_minuten") val fensterMinuten: Int = 60,
     val verlauf: List<VerlaufReihe> = emptyList(),
-    /** Je Quelle, die nicht antwortete: deren Karte ist „nicht gemessen", nicht leer. */
     val fehler: Map<String, String> = emptyMap(),
 )

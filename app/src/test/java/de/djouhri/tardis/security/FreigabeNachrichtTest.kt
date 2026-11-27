@@ -27,6 +27,14 @@ class FreigabeNachrichtTest {
         assertArrayEquals(erwartet, FreigabeSchluessel.befehlNachricht("a-1", "0".repeat(64), 5L))
     }
 
+    /** v2: derselbe Vektor in test_laeufer.py und test_befehle.py (test_nachricht_v2_...). */
+    @Test
+    fun befehlNachrichtV2TraegtModusUndWirt() {
+        val erwartet = ("homelab-befehl-v2\nwirt=node1\nid=a\nsha256=" + "0".repeat(64) + "\nmodus=abbruch\nausgestellt=5\n")
+            .toByteArray(Charsets.UTF_8)
+        assertArrayEquals(erwartet, FreigabeSchluessel.befehlNachricht("a", "0".repeat(64), 5L, "node1", "abbruch"))
+    }
+
     @Test
     fun fingerabdruckIstSha256KleinHex() {
         // SHA-256 von "abc", bekannter Pruefwert

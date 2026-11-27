@@ -18,7 +18,6 @@ import org.junit.Test
 
 class TopologieLayoutTest {
 
-    /** Groesse wie live am 2026-11-07: zwei grosse Wirte, ein paar kleine, viele leere. */
     private val echteGroesse = run {
         fun viele(wirt: String, n: Int, gruppen: Int) = (1..n).map { TopoDienst("$wirt-$it", "$wirt-$it", wirt, gruppe = "G${it % gruppen}") }
         val dienste = viele("host", 112, 9) + viele("node1", 108, 8) + viele("node2", 12, 1) +

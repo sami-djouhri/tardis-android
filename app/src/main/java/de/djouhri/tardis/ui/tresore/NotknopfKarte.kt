@@ -37,7 +37,6 @@ class NotknopfViewModel @Inject constructor(private val ops: OpsRepository) : Vi
     private val _zustand = MutableStateFlow(NotknopfZustand())
     val zustand = _zustand.asStateFlow()
 
-    /** Ein Druck, sofort (Owner Runde 73): keine Rueckfrage, kein Entsperren. */
     fun allesZu() {
         if (_zustand.value.laeuft) return
         _zustand.value = NotknopfZustand(laeuft = true)

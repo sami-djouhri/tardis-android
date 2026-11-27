@@ -66,11 +66,6 @@ data class TopologieResponse(
     val fehler: String? = null,
 )
 
-/**
- * Was im Kopf eines Wirt-Kastens steht: Zahl der Dienste, davon auffaellig, und
- * die Last, soweit gemessen. Fuer Kaesten, die die Wirtliste nicht kennt
- * (Dienste an fremdem Wirt), ist [wirt] null.
- */
 data class WirtKopf(val dienste: Int, val auffaellig: Int, val online: Boolean?, val last: String?)
 
 fun wirtKopf(wirt: TopoWirt?, dienste: List<TopoDienst>): WirtKopf {
@@ -211,7 +206,6 @@ fun aenderungen(alt: TopoSchnappschuss, t: TopologieResponse): TopoAenderungen {
     )
 }
 
-/** „heute 14:02“, „gestern 14:02“, sonst „31.10. 14:02“. */
 fun zeitpunktText(ms: Long, heute: LocalDate = LocalDate.now(), zone: ZoneId = ZoneId.systemDefault()): String {
     val t = Instant.ofEpochMilli(ms).atZone(zone)
     val uhr = t.format(DateTimeFormatter.ofPattern("HH:mm"))
@@ -373,7 +367,6 @@ data class TopoZeitpunkt(
     val at: Double? = null,
     /** Dienst-ID -> lief | ungesund | fehlte | startete | lief_nicht | unbekannt */
     val zustaende: Map<String, String> = emptyMap(),
-    /** Wirt -> erreichbar | nicht_erreichbar; leer, wenn damals nicht gemessen */
     val wirte: Map<String, String> = emptyMap(),
     @SerialName("ohne_laufdaten") val ohneLaufdaten: List<String> = emptyList(),
     val fehler: String? = null,

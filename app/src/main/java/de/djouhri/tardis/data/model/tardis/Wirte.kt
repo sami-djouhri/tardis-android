@@ -13,7 +13,6 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class WirteResponse(
-    /** false: Prometheus antwortete nicht. Leere Liste heisst dann „nicht gemessen". */
     val gemessen: Boolean = false,
     val fehler: String? = null,
     @SerialName("fenster_minuten") val fensterMinuten: Int = 60,

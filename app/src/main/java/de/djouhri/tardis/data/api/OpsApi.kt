@@ -112,7 +112,6 @@ interface OpsApi {
     @GET("v1/ops/backups")
     suspend fun backups(): BackupsResponse
 
-    /** Was nur der Owner tun kann, aus dem Aufgaben-Dienst (seit 2.0.25). */
     @GET("v1/owner/schritte")
     suspend fun ownerSchritte(): OwnerSchritteResponse
 

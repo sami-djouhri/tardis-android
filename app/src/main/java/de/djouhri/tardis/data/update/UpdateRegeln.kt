@@ -1,18 +1,5 @@
 package de.djouhri.tardis.data.update
 
-/**
- * Die Entscheidungen der Update-Kette, ohne Android und ohne Netz.
- *
- * Bis 2026-09-27 lief das Update so: in den Einstellungen auf "Auf Updates
- * pruefen" tippen, dann uebernahm der Browser. Zwei Dinge fehlten daran. Erstens
- * musste man daran denken; die installierte App war einen Monat alt, ohne dass
- * es jemandem auffiel. Zweitens wurde die angezeigte Pruefsumme nie geprueft,
- * sie stand nur da.
- *
- * Beides ist hier entschieden, damit es pruefbar ist: der Rest der Kette
- * (Netz, Dateisystem, Installer) haengt an Android und laesst sich nur auf
- * einem Geraet testen.
- */
 object UpdateRegeln {
 
     /**
@@ -37,14 +24,6 @@ object UpdateRegeln {
      */
     fun istNeuer(angeboten: Int, installiert: Int): Boolean = angeboten > installiert
 
-    /**
-     * Vergleicht den gemessenen Hash der geladenen Datei mit dem angekuendigten.
-     *
-     * Gross- und Kleinschreibung und umschliessende Leerzeichen sind egal, der
-     * Rest nicht. Fehlt die Ankuendigung, ist das KEIN Bestehen, sondern ein
-     * eigener Fall: die Oberflaeche sagt dann, dass nicht verglichen werden
-     * konnte, statt ein Haekchen zu zeigen, das nichts bedeutet.
-     */
     fun hashUrteil(erwartet: String?, gemessen: String): HashUrteil {
         val soll = erwartet?.trim()?.lowercase().orEmpty()
         if (soll.isEmpty()) return HashUrteil.OHNE_VERGLEICH
@@ -53,10 +32,8 @@ object UpdateRegeln {
 }
 
 enum class HashUrteil {
-    /** Gemessen und gleich. */
     PASST,
 
-    /** Gemessen und ungleich: die Datei wird nicht installiert, sondern geloescht. */
     ABWEICHUNG,
 
     /** Der Server hat keinen Hash genannt. Kein Urteil, und das wird gesagt. */

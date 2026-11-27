@@ -31,10 +31,6 @@ data class Alarm(
 
 @Serializable
 data class AlarmeResponse(
-    /**
-     * `false` heisst „nicht gemessen", nicht „keine Alarme". Die Oberflaeche
-     * darf daraus nie Ruhe machen: genau dann ist Ruhe am wenigsten belegt.
-     */
     val erreichbar: Boolean = false,
     val stand: String? = null,
     val fehler: String? = null,

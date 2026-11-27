@@ -39,7 +39,6 @@ class AbrufTest {
 
     @Test
     fun `Antwort des Gateways wird gelesen`() {
-        // Form wie live am 2026-10-31 von /v1/ops/abruf.
         val roh = """
             {"wecker":{"erreichbar":true,"fehler":null,"frei_mb":5669,"reserve_mb":900,"dienste":[
               {"name":"schach","titel":"Schach","laeuft":false,"bereit":false,"leerlauf_s":null,

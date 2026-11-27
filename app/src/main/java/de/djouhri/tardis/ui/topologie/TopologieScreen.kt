@@ -157,11 +157,6 @@ class TopologieViewModel @Inject constructor(
     private val _state = MutableStateFlow(TopologieUiState())
     val state = _state.asStateFlow()
 
-    /**
-     * Vergleichsbasis fuer diese Sitzung: der Stand beim LETZTEN Oeffnen. Sie
-     * bleibt fest, waehrend die Karte sich auffrischt; gespeichert wird bei
-     * jedem Abruf der neue Stand, der dann beim naechsten Oeffnen die Basis ist.
-     */
     private var basis: TopoSchnappschuss? = null
     private var basisGelesen = false
 
@@ -458,8 +453,6 @@ internal fun Karte(
         // Gezeichnet ab p.y + 12, unter dem Auswahlring (Radius 11+1).
         layout.dienste.keys.mapNotNull { id -> dienstNach[id]?.let { id to miss(it.label, 5.5f, schrift, breite = 28) } }.toMap()
     }
-    // Netz: Namen in Bildschirmgroesse (sp), ausserhalb der Kartentransformation
-    // gezeichnet; ebenfalls einmal gemessen und ohne Grenzen.
     val netzTexte = remember(netz, dienstNach, messer, schrift) {
         netz?.punkte?.keys?.associateWith { id ->
             val wirt = id in netz.wirte
@@ -941,7 +934,6 @@ internal fun Karte(
     }
 }
 
-/** Typischer Abstand zweier Punkte im Netz (gemessen rund 33): ab dieser Bildgroesse passen alle Namen. */
 private const val KANTE_NETZ = 32f
 
 @Composable

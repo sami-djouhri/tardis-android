@@ -12,12 +12,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import de.djouhri.tardis.ui.components.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -216,16 +222,23 @@ fun ServicesScreen(
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             items(sichtbar.rows()) { row ->
                                 when (row) {
-                                    is ServiceRow.Header -> Text(
-                                        "${row.host} · ${row.laufend}/${row.gesamt} laufen",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
-                                    )
+                                    is ServiceRow.Header -> Row(
+                                        Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            "${row.host} · ${row.laufend}/${row.gesamt} laufen".uppercase(),
+                                            style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.4.sp),
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                        Box(
+                                            Modifier.padding(start = 10.dp).weight(1f).height(1.dp)
+                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+                                        )
+                                    }
                                     is ServiceRow.Item -> ServiceListItem(row.service, onOpenDetail)
                                 }
                             }
@@ -308,15 +321,21 @@ private fun ServiceListItem(
     service: ServiceSummary,
     onOpenDetail: (String, String) -> Unit,
 ) {
-    Card(
+    val linie = MaterialTheme.colorScheme.outlineVariant
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onOpenDetail(service.host, service.name) },
+            .background(MaterialTheme.colorScheme.surface)
+            .clickable { onOpenDetail(service.host, service.name) }
+            .drawWithContent {
+                drawContent()
+                drawRect(linie, topLeft = Offset(0f, size.height - 1f), size = Size(size.width, 1f))
+            },
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(horizontal = 14.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             StatusDot(color = serviceStatusColor(service))

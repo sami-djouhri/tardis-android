@@ -4,10 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * Das Widget sagt nie „0", wenn niemand gemessen hat: frisch installiert steht
- * dort „nicht gemessen", nicht „Keine Alarme".
- */
 class WidgetZeilenTest {
 
     @Test

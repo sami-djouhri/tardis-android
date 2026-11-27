@@ -9,8 +9,8 @@ import kotlinx.serialization.Serializable
  * Der Unterschied zwischen [BEWUSST_AUS] und [AUSGEFALLEN] ist der Grund, warum
  * es diese Aufzaehlung gibt: die Uebersicht meldete vorher jeden beendeten
  * Container als Problem. Auf host waren das dauerhaft elf, und alle elf sind
- * Absicht (`ai-llm` als Rueckfall, `schach` auf Abruf, `jellyfin` seit dem
- * Umzug auf node1). Eine Liste, in der nichts stimmt, liest niemand mehr.
+ * Absicht (`ai-llm` als Rueckfall, `schach` auf Abruf). Eine Liste, in der
+ * nichts stimmt, liest niemand mehr.
  */
 enum class ServiceZustand {
     /** Laeuft und meldet keinen Fehlbefund. */

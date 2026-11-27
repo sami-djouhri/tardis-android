@@ -1,10 +1,17 @@
 package de.djouhri.tardis.data.api
 
+import de.djouhri.tardis.data.model.tardis.Abgelehnt
+import de.djouhri.tardis.data.model.tardis.BefehlAblehnen
 import de.djouhri.tardis.data.model.tardis.BefehlAngenommen
+import de.djouhri.tardis.data.model.tardis.DeployAblehnen
+import de.djouhri.tardis.data.model.tardis.VerlaufEintrag
 import de.djouhri.tardis.data.model.tardis.BefehlUnterschrift
 import de.djouhri.tardis.data.model.tardis.BefehleAntwort
 import de.djouhri.tardis.data.model.tardis.FreigabeErgebnis
 import de.djouhri.tardis.data.model.tardis.FreigabenAntwort
+import de.djouhri.tardis.data.model.tardis.HausbusAntwort
+import de.djouhri.tardis.data.model.tardis.HausbusEntscheidung
+import de.djouhri.tardis.data.model.tardis.HausbusErgebnis
 import de.djouhri.tardis.data.model.tardis.SchluesselGemeldet
 import de.djouhri.tardis.data.model.tardis.SchluesselMelden
 import de.djouhri.tardis.data.model.tardis.Unterschrift
@@ -36,4 +43,24 @@ interface FreigabenApi {
 
     @POST("v1/befehle/{id}/freigeben")
     suspend fun befehlFreigeben(@Path("id") id: String, @Body body: BefehlUnterschrift): BefehlAngenommen
+
+    @POST("v1/befehle/{id}/abbrechen")
+    suspend fun befehlAbbrechen(@Path("id") id: String, @Body body: BefehlUnterschrift): BefehlAngenommen
+
+    /** Ohne Unterschrift: Ablehnen startet nichts. */
+    @POST("v1/befehle/{id}/ablehnen")
+    suspend fun befehlAblehnen(@Path("id") id: String, @Body body: BefehlAblehnen): Abgelehnt
+
+    @POST("v1/freigaben/ablehnen")
+    suspend fun deployAblehnen(@Body body: DeployAblehnen): Abgelehnt
+
+    /** Hausbus (brain-bus): Vorschlaege, die ein Ja brauchen; die Schranke ist tardis. */
+    @GET("v1/freigaben/hausbus")
+    suspend fun hausbus(): HausbusAntwort
+
+    @POST("v1/freigaben/hausbus/{id}")
+    suspend fun hausbusEntscheiden(@Path("id") id: String, @Body body: HausbusEntscheidung): HausbusErgebnis
+
+    @GET("v1/freigaben/verlauf")
+    suspend fun verlauf(): List<VerlaufEintrag>
 }

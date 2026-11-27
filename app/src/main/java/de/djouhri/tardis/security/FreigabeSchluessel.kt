@@ -14,23 +14,6 @@ import java.security.spec.ECGenParameterSpec
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Der Schluessel, mit dem der Owner Pull-Deploys freigibt.
- *
- * Getrennt vom Kopplungsschluessel ([DeviceKeystore]): der Keystore gibt ihn
- * nur nach Fingerabdruck oder Geraete-PIN frei, und zwar fuer JEDE einzelne
- * Unterschrift (keine Gueltigkeitsdauer). Ein gestohlenes Kopplungs-Token kann
- * damit nichts freigeben, und die Sperre steckt im Keystore, nicht in der App.
- *
- * Kommt ein neuer Fingerabdruck dazu, macht Android den Schluessel ungueltig
- * (Vorgabe von `setInvalidatedByBiometricEnrollment`). Gewollt: wer das Telefon
- * entsperrt in der Hand hat und seinen Finger eintraegt, soll damit nicht
- * freigeben koennen. Folge: danach neu erzeugen und auf dem Zielwirt per
- * root-Befehl neu hinterlegen.
- *
- * Der Zielwirt prueft die Unterschrift selbst (docker/pull-deploy/agent/freigabe.py)
- * gegen den Text aus [nachricht]; beide Seiten muessen Zeichen fuer Zeichen gleich sein.
- */
 @Singleton
 class FreigabeSchluessel @Inject constructor() {
 
@@ -46,8 +29,13 @@ class FreigabeSchluessel @Inject constructor() {
                 .toByteArray(Charsets.UTF_8)
 
         /** Befehls-Freigabe: gleich zu befehls-freigabe/laeufer.py und mobile-api/routers/befehle.py. */
-        fun befehlNachricht(id: String, sha256: String, ausgestellt: Long, wirt: String = "host"): ByteArray =
-            "homelab-befehl-v1\nwirt=$wirt\nid=$id\nsha256=$sha256\nausgestellt=$ausgestellt\n".toByteArray(Charsets.UTF_8)
+        fun befehlNachricht(
+            id: String, sha256: String, ausgestellt: Long, wirt: String = "host", modus: String = "lauf",
+        ): ByteArray = (
+            if (modus == "lauf") "homelab-befehl-v1\nwirt=$wirt\nid=$id\nsha256=$sha256\nausgestellt=$ausgestellt\n"
+            // v2 traegt den Modus: eine Probe- oder Abbruch-Unterschrift taugt fuer keinen echten Lauf.
+            else "homelab-befehl-v2\nwirt=$wirt\nid=$id\nsha256=$sha256\nmodus=$modus\nausgestellt=$ausgestellt\n"
+            ).toByteArray(Charsets.UTF_8)
 
         /** SHA-256 ueber SubjectPublicKeyInfo, klein-hex; dieselbe Zahl rechnet der Zielwirt. */
         fun fingerabdruck(spki: ByteArray): String =

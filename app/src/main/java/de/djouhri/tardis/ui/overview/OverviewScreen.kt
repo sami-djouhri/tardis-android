@@ -401,18 +401,12 @@ private fun ContainerRollupCard(state: OverviewUiState, onOpenServices: () -> Un
 private fun uhrzeit(zeitpunkt: Long): String =
     SimpleDateFormat("HH:mm", Locale.GERMANY).format(Date(zeitpunkt))
 
-/** „14:32 Uhr" heute, sonst „16.11. 14:32 Uhr": ein gespeicherter Stand kann Tage alt sein. */
 internal fun uhrzeitOderTag(zeitpunkt: Long, jetzt: Long = System.currentTimeMillis()): String {
     val tag = SimpleDateFormat("yyyyMMdd", Locale.GERMANY)
     val format = if (tag.format(Date(zeitpunkt)) == tag.format(Date(jetzt))) "HH:mm" else "d.M. HH:mm"
     return SimpleDateFormat(format, Locale.GERMANY).format(Date(zeitpunkt)) + " Uhr"
 }
 
-/**
- * Was nur der Owner tun kann (2.0.25). Steht unter den Alarmen: es brennt
- * nicht, aber es wartet. Gezeigt wird nur, was heute dran ist; Geplantes und
- * Gemeldetes steht auf der Unterseite.
- */
 @Composable
 private fun OwnerKurzKarte(owner: OwnerSchritteResponse, onOpen: () -> Unit) {
     if (!owner.gemessen) return

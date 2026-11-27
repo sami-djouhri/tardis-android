@@ -5,13 +5,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * Die zwei Entscheidungen, an denen die Update-Kette haengt.
- *
- * Bis 2026-09-27 traf die App keine von beiden: sie prueft nur, wenn man in den
- * Einstellungen danach fragt, und die angekuendigte Pruefsumme wurde angezeigt,
- * aber nie mit der geladenen Datei verglichen.
- */
 class UpdateRegelnTest {
 
     @Test

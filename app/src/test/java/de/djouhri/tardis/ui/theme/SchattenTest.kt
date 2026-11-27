@@ -16,15 +16,15 @@ class SchattenTest {
     }
 
     @Test
-    fun `blau ist der einzige ton und traegt das schema aus color_kt`() {
-        assertEquals(TardisTon.BLAU, TardisTon.VORGABE)
-        assertEquals(AccentDark, dunklesSchemaBlau.primary)
-        assertEquals(DangerDark, dunklesSchemaBlau.error)
+    fun `amber ist der einzige ton und traegt das schema aus color_kt`() {
+        assertEquals(TardisTon.AMBER, TardisTon.VORGABE)
+        assertEquals(AccentDark, dunklesSchemaAmber.primary)
+        assertEquals(DangerDark, dunklesSchemaAmber.error)
     }
 
     @Test
-    fun `blau haelt die kontraste`() {
-        val s = dunklesSchemaBlau
+    fun `amber haelt die kontraste`() {
+        val s = dunklesSchemaAmber
         assertTrue("Text", kontrast(s.onSurface, s.surface) >= 7.0)
         assertTrue("zweiter Text", kontrast(s.onSurfaceVariant, s.surfaceContainerHigh) >= 4.5)
         assertTrue("leiser Text", kontrast(TextDimDark, SurfaceHoverDark) >= 4.5)

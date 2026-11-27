@@ -11,12 +11,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * In-Memory-Spiegel des Auth-Zustands. Der OkHttp-Auth-Interceptor liest hier
- * das Token und die Gateway-Basis-URL OHNE `runBlocking` - die Werte werden
- * asynchron aus dem [SettingsStore] gepflegt und liegen als `@Volatile`-Felder
- * vor. Das haelt den Netz-Hot-Path frei von blockierenden DataStore-Zugriffen.
- */
 @Singleton
 class SessionState @Inject constructor(
     settingsStore: SettingsStore,
@@ -90,7 +84,6 @@ class SessionState @Inject constructor(
         clearUnauthorized()
     }
 
-    /** Nullt den In-Memory-Auth-Zustand SOFORT beim Entkoppeln. */
     fun clearSession() {
         token = null
         clientCertPem = null

@@ -18,20 +18,6 @@ on:
 permissions:
   contents: read
 
-# ACTION-VERSIONEN NACHGEZOGEN (2026-10-25). checkout und upload-artifact
-# standen auf v4 und damit auf Node 20, das GitHub abgekuendigt hat: die Laeufe
-# wurden schon zwangsweise auf Node 24 gehoben und tragen eine Warnung. Faellt
-# der Zwischenschritt weg, bricht der Build.
-# Dependabot hatte genau diese Bumps vorgeschlagen und die CI hatte sie als
-# GRUEN bestaetigt (#1 upload-artifact 4->7, #2 checkout 4->7, #10 setup-java
-# 4->6, dazu gradle/actions 4->6). Alle wurden geschlossen, ohne gemergt zu
-# werden, und ein verworfener Bot-PR kommt nicht zurueck. Deshalb standen fuer
-# `github-actions` null offene PRs, was wie „nichts zu tun" aussieht und das
-# Gegenteil bedeutete.
-# ⚠ Bewusst Major-Tags und KEINE Commit-SHAs: der Job laeuft mit
-# `permissions: contents: read` und ohne jedes Secret, die Angriffsflaeche ist
-# also gering, waehrend ein SHA-Pin jeden kuenftigen Bump zur Handarbeit macht,
-# und Handarbeit ist in diesem Repo genau die Stelle, an der es stehenblieb.
 jobs:
   build:
     runs-on: ubuntu-latest

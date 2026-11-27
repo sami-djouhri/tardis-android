@@ -26,19 +26,6 @@ data class GeladeneApk(
     val gemessenerHash: String,
 )
 
-/**
- * Holt die APK selbst, statt sie dem Browser zu ueberlassen.
- *
- * Warum nicht weiter per `ACTION_VIEW` an den Browser: der Download landet dort
- * im allgemeinen Download-Ordner, niemand vergleicht die Pruefsumme, und die
- * App weiss hinterher nicht, ob etwas passiert ist. Hier wird geladen,
- * gemessen und erst dann dem Installer uebergeben.
- *
- * Die Herkunft prueft weiterhin [UpdateUrl]: die APK darf ausschliesslich vom
- * gekoppelten Gateway kommen, gleiches Schema, gleicher Host, gleicher Port.
- * Die Signaturpruefung macht Android beim Installieren; der Hash hier deckt den
- * Weg dazwischen ab (abgebrochener Download, falsche Datei am Gateway).
- */
 @Singleton
 class UpdateRepository @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -107,10 +94,6 @@ class UpdateRepository @Inject constructor(
                                 "${version.sha256.take(12)}…, geladen wurde ${gemessen.take(12)}…",
                         )
                     }
-                    // Seit 2026-10-30 kein Installieren ohne Vergleich mehr.
-                    // Vorher hiess das nur „nicht verglichen", und die Datei ging
-                    // trotzdem an den Installer. `ausliefern.sh` schreibt die
-                    // Pruefsumme immer; fehlt sie, stimmt am Gateway etwas nicht.
                     HashUrteil.OHNE_VERGLEICH -> {
                         teil.delete()
                         error("Das Gateway nennt keine Prüfsumme, die Datei wird nicht installiert.")

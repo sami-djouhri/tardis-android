@@ -48,24 +48,6 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
-/*
- * Schatten-Stufe fuer den Leitstand (Owner-Wahl 2026-11-21): die Effekte, die
- * die Schach-App seit 0.3.2 traegt (die Farbwahl dazu ist seit 2.0.31 weg). Vorbild ist
- * `feature-schach/.../ui/Schatten.kt` in saganta-apps; die Tardis-App haengt
- * nicht an saganta-apps, deshalb steht die Umsetzung hier ein zweites Mal.
- *
- * Anders als im Spiel traegt Farbe hier Bedeutung. Deshalb:
- *   - Kein Altgold: liegt beim Warn-Gelb (Farbabstand 18), ein Titel saehe
- *     aus wie eine Warnung.
- *   - Glitch nur, wenn ein Alarm NEU dazukommt, nicht in zufaelligen
- *     Abstaenden: im Leitstand liest sich ein grundloses Flackern wie ein
- *     Fehler der App.
- *
- * Bewegtes haelt sich an die Regeln aus Terminal.kt: kein Stoss ueber 300 ms,
- * keine drei Wechsel je Sekunde, ohne Systemanimationen oder mit dem Schalter
- * „Effekte" aus steht alles.
- */
-
 /** Ein Farbton: Akzent, Schrift auf voller Akzentflaeche und die zwei Nebelfarben. */
 data class TardisTon(
     val schluessel: String,
@@ -77,16 +59,12 @@ data class TardisTon(
     val nebelUnten: Color,
 ) {
     companion object {
-        /**
-         * Seit 2.0.31 der einzige Ton (Owner 2026-11-21: Blau, Farbwahl entfernt).
-         * Die Werte stehen in Color.kt, damit Widget und Schema dieselben lesen.
-         */
-        val BLAU = TardisTon(
-            "blau", "Blau",
+        val AMBER = TardisTon(
+            "amber", "Amber",
             akzent = AccentDark, akzentHell = AccentHellDark, akzentVorne = AccentForegroundDark,
-            nebelOben = Color(0xFF1C4FD6), nebelUnten = Color(0xFF2A1670),
+            nebelOben = Color(0xFFFFB000), nebelUnten = Color(0xFFFF7A00),
         )
-        val VORGABE = BLAU
+        val VORGABE = AMBER
     }
 }
 

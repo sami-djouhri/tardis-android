@@ -112,8 +112,6 @@ class AlarmeViewModel @Inject constructor(
 @Composable
 fun AlarmeScreen(viewModel: AlarmeViewModel) {
     val state by viewModel.state.collectAsState()
-    // Owner 2026-11-06: Filter nach Bereich statt „nur kritische“, die stehen
-    // ohnehin oben. null = alle Bereiche.
     var bereich by rememberSaveable { mutableStateOf<String?>(null) }
 
     PullToRefreshBox(

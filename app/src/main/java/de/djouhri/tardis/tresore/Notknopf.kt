@@ -30,16 +30,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
-/**
- * Notknopf als Schnelleinstellungs-Kachel (Owner B84, ZIELBILD 100 (b)): nur
- * schliessen, ein Druck, ohne die App zu entsperren.
- *
- * Die Kachel selbst schliesst nichts. Android bindet eine TileService nur,
- * solange das Schnelleinstellungsfeld offen ist; wer es nach dem Tippen sofort
- * zuschiebt, haette den Aufruf mitten im Aushaengen abgebrochen. Deshalb plant
- * sie einen JobService, der bis zu zehn Minuten laufen darf und das Ergebnis
- * als Benachrichtigung meldet.
- */
 class NotknopfKachel : TileService() {
 
     override fun onStartListening() {

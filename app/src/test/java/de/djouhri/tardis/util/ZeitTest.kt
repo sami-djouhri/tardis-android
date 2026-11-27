@@ -30,7 +30,6 @@ class ZeitTest {
     fun `Offset statt Z wird gelesen`() {
         // So schreibt der alerts-Dienst `last_poll` (Python isoformat).
         assertEquals("seit 12 min", seitText("2026-10-31T11:48:00+00:00", jetzt, berlin))
-        // Am 31.10. gilt schon MEZ (+1), die Sommerzeit endete am 25.10.
         assertEquals("12:48", uhrzeitAus("2026-10-31T11:48:00.123456+00:00", berlin))
     }
 

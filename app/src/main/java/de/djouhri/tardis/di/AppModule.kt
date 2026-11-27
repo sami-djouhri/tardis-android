@@ -62,8 +62,6 @@ object AppModule {
         sessionState: SessionState,
         mtlsProvider: MtlsProvider,
     ): OkHttpClient {
-        // Setzt Bearer-Token + aktuelle Gateway-Basis-URL. Liest den Zustand
-        // NON-BLOCKING aus dem In-Memory-SessionState (kein runBlocking im Hot-Path).
         val authInterceptor = Interceptor { chain ->
             val token = sessionState.token
             val target = sessionState.gatewayBaseUrl().toHttpUrlOrNull()

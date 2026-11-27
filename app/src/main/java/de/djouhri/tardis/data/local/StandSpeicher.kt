@@ -99,16 +99,6 @@ data class Gespeichert<T>(val zeit: Long, val daten: T)
  */
 data class Stand<T>(val daten: T, val alt: Long? = null)
 
-/**
- * Letzter guter Stand fuer Start, Alarme, Wirte und Sicherung (Owner 17.11., TA6).
- *
- * Antwortet das Gateway nicht, liefert [mitSpeicher] den letzten Stand statt
- * eines Fehlers und setzt [ausSpeicher] auf dessen Zeitpunkt; die Oberflaeche
- * zeigt dann ein Band „Ohne Verbindung, Stand von …". Ein alter Stand ohne
- * dieses Band waere eine Behauptung, er saehe aus wie eine frische Messung.
- *
- * Steuern (Container, Wecken, Notknopf, Freigaben) laeuft nie hierueber.
- */
 @Singleton
 class StandSpeicher(
     private val ablage: StandAblage,
@@ -120,7 +110,6 @@ class StandSpeicher(
 
     private val _ausSpeicher = MutableStateFlow<Long?>(null)
 
-    /** Zeitpunkt des gezeigten alten Standes, `null` solange live gemessen wird. */
     val ausSpeicher: StateFlow<Long?> = _ausSpeicher.asStateFlow()
 
     fun <T> letzter(schluessel: String, serializer: KSerializer<T>): Gespeichert<T>? {

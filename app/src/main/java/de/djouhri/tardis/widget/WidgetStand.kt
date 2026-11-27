@@ -10,16 +10,6 @@ import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Was das Widget auf dem Startbildschirm zeigt, zuletzt gemessen.
- *
- * Zwei Teile mit eigener Uhrzeit: die Alarme kommen jede Minute aus der
- * offenen App, die Dienste nur, wenn die Uebersicht laedt. Ein gemeinsamer
- * Zeitstempel saehe frischer aus, als die aeltere Haelfte ist.
- *
- * `null` heisst „nie gemessen", nicht 0. Ein Widget, das nach der Installation
- * „0 Alarme" zeigt, behauptet Ruhe, die niemand geprueft hat.
- */
 @Serializable
 data class WidgetStand(
     val alarme: Int? = null,

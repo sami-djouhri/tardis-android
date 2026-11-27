@@ -1,26 +1,4 @@
 #!/usr/bin/env bash
-# Liefert eine gebaute Tardis-APK aus: nach mobile-api/dist, samt Manifest.
-#
-# WARUM ES DIESES SKRIPT GIBT. Bis zum 2026-10-10 war das Ausliefern
-# Handarbeit: Datei kopieren, `tardis-version.json` von Hand schreiben. Die
-# Zahl darin und die Zahl IN der APK kamen aus zwei verschiedenen Koepfen, und
-# am 2026-10-09 liefen sie auseinander -- gebaut wurde ohne
-# `-Ptardis.versionCode`, die APK trug also die Vorgabe 5, dieselbe Nummer wie
-# die bereits ausgelieferte.
-#
-# Ein Downgrade faellt auf: der Installer weigert sich. Ein STILLSTAND nicht.
-# Das Manifest haette 6 angekuendigt, die Datei darunter waere 5 gewesen, die
-# App haette das Update geholt, installiert, sich danach weiter als 5 gemeldet
-# und beim naechsten Blick erneut dasselbe Update angeboten. In Schleife, ohne
-# Fehlermeldung, auf dem Telefon des Owners.
-#
-# Deshalb liest dieses Skript die Version AUS DER APK und schreibt sie ins
-# Manifest, statt sie entgegenzunehmen. Es gibt hier keine zweite Zahl.
-#
-# Aufruf:
-#   ./ausliefern.sh <apk> [--changelog <datei>] [--trocken]
-# Beispiel:
-#   ./ausliefern.sh /tmp/tardis-neu.apk
 set -euo pipefail
 
 HIER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,14 +18,6 @@ done
 [ -n "$apk" ] || { echo "FEHLER: welche APK? Aufruf: ./ausliefern.sh <apk>" >&2; exit 2; }
 [ -f "$apk" ] || { echo "FEHLER: $apk gibt es nicht." >&2; exit 2; }
 
-# --- Was steckt wirklich drin? ----------------------------------------------
-#
-# `aapt2` gibt es auf host nicht (arm64, kein Build-Tools-Paket fuer SDK
-# 35+). Gelesen wird deshalb der Stringpool der binaeren AndroidManifest.xml:
-# `versionName` steht dort als UTF-16, und weil die Vorlage "2.0.$versionCode"
-# lautet, traegt sie den versionCode mit. Das ist keine vollstaendige
-# AXML-Analyse, aber es ist eine MESSUNG an der Datei und keine Annahme ueber
-# den Bau.
 messung="$(python3 - "$apk" <<'PY'
 import re, sys, zipfile
 with zipfile.ZipFile(sys.argv[1]) as z:
@@ -114,14 +84,6 @@ HINWEIS
     exit 1
 fi
 
-# --- Changelog --------------------------------------------------------------
-#
-# Genommen wird der VORSPANN des obersten Abschnitts, also der Text zwischen
-# der `## `-Ueberschrift und der ersten `### `-Zeile -- und nicht der ganze
-# Abschnitt. Darunter steht, was am Code anders ist (Dateinamen, Routen,
-# Begruendungen); der Owner liest den Text in einem Dialog auf dem Telefon und
-# will wissen, was seine App jetzt anders macht. Ein Ort fuer beides, zwei
-# Leserkreise, und die Trennlinie ist die Ueberschriftenebene.
 if [ -z "$changelog" ]; then
     text="$(python3 - "$HIER/CHANGELOG.md" <<'PY'
 import re, sys
